@@ -1,10 +1,6 @@
 /* =========================================================
    ADMIN.JS – REAL KNOWLEDGE BUILDER
-   Environment:
-   - Chrome / Android Browser
-   - GitHub Pages
-   - Mobile Network
-   - LocalStorage
+   Storage KEY: KNOWLEDGE_DB
    ========================================================= */
 
 const KEY = "KNOWLEDGE_DB";
@@ -23,7 +19,7 @@ const listEl = document.getElementById("list");
 function loadData() {
   try {
     return JSON.parse(localStorage.getItem(KEY)) || [];
-  } catch (e) {
+  } catch {
     return [];
   }
 }
@@ -32,29 +28,15 @@ function saveData(data) {
   localStorage.setItem(KEY, JSON.stringify(data));
 }
 
-/* ===== SAVE / UPDATE ITEM ===== */
+/* ===== SAVE / UPDATE ===== */
 function saveItem() {
   const q = qEl.value.trim();
-  const opts = optsEl.value
-    .split("\n")
-    .map(o => o.trim())
-    .filter(o => o !== "");
-
+  const opts = optsEl.value.split("\n").map(s=>s.trim()).filter(Boolean);
   const ans = parseInt(ansEl.value.trim(), 10);
   const exp = expEl.value.trim();
 
-  if (!q) {
-    alert("प्रश्न खाली है");
-    return;
-  }
-
-  if (opts.length < 2) {
-    alert("कम से कम 2 विकल्प होने चाहिए");
-    return;
-  }
-
-  if (isNaN(ans) || ans < 0 || ans >= opts.length) {
-    alert("सही उत्तर का index गलत है");
+  if (!q || opts.length < 2 || isNaN(ans) || ans < 0 || ans >= opts.length) {
+    alert("कृपया प्रश्न, कम से कम 2 विकल्प और सही उत्तर (index) भरें");
     return;
   }
 
@@ -78,56 +60,49 @@ function renderList() {
   const data = loadData();
   listEl.innerHTML = "";
 
-  if (data.length === 0) {
-    listEl.innerHTML = "<p>कोई ज्ञान सेव नहीं है</p>";
+  if (!data.length) {
+    listEl.innerHTML = "<p>कोई प्रश्न सेव नहीं है</p>";
     return;
   }
 
-  data.forEach((d, i) => {
+  data.forEach((d,i)=>{
     const card = document.createElement("div");
     card.className = "card";
-
     card.innerHTML = `
       <b>${d.q}</b>
-      <div style="font-size:14px;margin:4px 0;">
-        ✔ सही उत्तर: ${d.opts[d.ans] || ""}
+      <div style="font-size:14px;margin:6px 0;">
+        ✔ सही उत्तर: ${d.opts[d.ans]}
       </div>
       <div class="actions">
         <button class="upd" onclick="editItem(${i})">✏️ Edit</button>
         <button class="del" onclick="deleteItem(${i})">❌ Delete</button>
       </div>
     `;
-
     listEl.appendChild(card);
   });
 }
 
-/* ===== EDIT ITEM ===== */
-function editItem(index) {
-  const data = loadData();
-  const d = data[index];
-
-  qEl.value    = d.q;
+/* ===== EDIT / DELETE ===== */
+function editItem(i){
+  const d = loadData()[i];
+  qEl.value = d.q;
   optsEl.value = d.opts.join("\n");
-  ansEl.value  = d.ans;
-  expEl.value  = d.exp || "";
-
-  editIndex = index;
+  ansEl.value = d.ans;
+  expEl.value = d.exp || "";
+  editIndex = i;
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-/* ===== DELETE ITEM ===== */
-function deleteItem(index) {
-  if (!confirm("क्या यह प्रश्न हटाना है?")) return;
-
+function deleteItem(i){
+  if(!confirm("क्या यह प्रश्न हटाना है?")) return;
   const data = loadData();
-  data.splice(index, 1);
+  data.splice(i,1);
   saveData(data);
   renderList();
 }
 
-/* ===== CLEAR FORM ===== */
-function clearForm() {
+/* ===== CLEAR ===== */
+function clearForm(){
   qEl.value = "";
   optsEl.value = "";
   ansEl.value = "";
@@ -135,27 +110,21 @@ function clearForm() {
 }
 
 /* ===== STT (Speech-to-Text) ===== */
-function sttFill(targetId) {
-  if (!("webkitSpeechRecognition" in window)) {
-    alert("यह ब्राउज़र Speech-to-Text सपोर्ट नहीं करता");
+function sttFill(targetId){
+  if(!("webkitSpeechRecognition" in window)){
+    alert("यह ब्राउज़र STT सपोर्ट नहीं करता");
     return;
   }
+  const rec = new webkitSpeechRecognition();
+  rec.lang = "hi-IN";
+  rec.continuous = false;
+  rec.interimResults = false;
 
-  const recognition = new webkitSpeechRecognition();
-  recognition.lang = "hi-IN";
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
-    document.getElementById(targetId).value += text;
+  rec.onresult = e=>{
+    document.getElementById(targetId).value += e.results[0][0].transcript;
   };
-
-  recognition.onerror = () => {
-    alert("आवाज़ पहचान में समस्या हुई");
-  };
-
-  recognition.start();
+  rec.onerror = ()=>alert("आवाज़ पहचान में समस्या");
+  rec.start();
 }
 
 /* ===== INIT ===== */
