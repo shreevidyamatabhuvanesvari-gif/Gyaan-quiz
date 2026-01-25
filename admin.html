@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel – Knowledge Builder</title>
+
+<style>
+body{
+  margin:0;
+  font-family:"Noto Sans Devanagari", sans-serif;
+  background:#f3f4f6;
+  color:#111;
+}
+
+header{
+  background:#1f2937;
+  color:#fff;
+  padding:12px;
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+}
+
+main{
+  padding:14px;
+  max-width:720px;
+  margin:auto;
+}
+
+label{
+  font-weight:bold;
+  display:block;
+  margin-top:14px;
+}
+
+textarea{
+  width:100%;
+  min-height:90px;
+  padding:10px;
+  font-size:16px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  box-sizing:border-box;
+}
+
+textarea.large{
+  min-height:160px;
+}
+
+button{
+  margin-top:10px;
+  padding:10px 16px;
+  font-size:15px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.save{
+  background:#16a34a;
+  color:#fff;
+}
+
+.stt{
+  background:#2563eb;
+  color:#fff;
+  margin-left:6px;
+}
+
+.card{
+  background:#fff;
+  padding:12px;
+  margin-top:14px;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.card b{
+  display:block;
+  margin-bottom:6px;
+}
+
+.actions button{
+  font-size:13px;
+  padding:6px 10px;
+  margin-right:6px;
+}
+
+.del{ background:#dc2626; color:#fff; }
+.upd{ background:#f59e0b; color:#000; }
+</style>
+</head>
+
+<body>
+
+<header>🔐 ADMIN PANEL – ज्ञान निर्माण</header>
+
+<main>
+
+<label>प्रश्न</label>
+<textarea id="q" placeholder="यहाँ प्रश्न लिखें या बोलें..."></textarea>
+<button class="stt" onclick="sttFill('q')">🎤 बोलकर लिखें</button>
+
+<label>विकल्प (हर विकल्प नई पंक्ति में)</label>
+<textarea id="opts" placeholder="A विकल्प&#10;B विकल्प&#10;C विकल्प&#10;D विकल्प"></textarea>
+
+<label>सही उत्तर (0 / 1 / 2 / 3)</label>
+<textarea id="ans" placeholder="उदाहरण: 1"></textarea>
+
+<label>कारण / व्याख्या</label>
+<textarea id="exp" class="large" placeholder="उत्तर सही क्यों है – यहाँ लिखें या बोलें..."></textarea>
+<button class="stt" onclick="sttFill('exp')">🎤 बोलकर लिखें</button>
+
+<br>
+<button class="save" onclick="saveItem()">💾 सेव करें</button>
+
+<h3 style="margin-top:20px;">📚 सेव किया गया ज्ञान</h3>
+<div id="list"></div>
+
+</main>
+
+<script src="admin.js"></script>
+</body>
+</html>
