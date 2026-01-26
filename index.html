@@ -101,115 +101,68 @@ body{
 <script src="voice/tts.js"></script>
 <script src="voice/stt.js"></script>
 
-  <script src="presence/AnjaliPresence.js"></script>
-  
+<!-- ================= PRESENCE ================= -->
+<script src="presence/AnjaliPresence.js"></script>
+
 <!-- ================= MAIN ================= -->
 <script src="main.js"></script>
 
-  <script>
-/* ================= QUIZ (ADMIN STORE BASED) ================= */
+<script>
+/* ================= BASIC UI ================= */
+document.getElementById("adminBtn").onclick = () => {
+  window.location.href = "admin.html";
+};
 
+document.getElementById("startBtn").onclick = () => {
+  document.getElementById("appStatus").innerText = "अंजली सक्रिय है…";
+};
+
+/* ================= QUIZ (SAFE & SINGLE) ================= */
 const QUIZ_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
 
-let quizList = [];
+const quizBtn = document.getElementById("quizBtn");
+const quizBox = document.getElementById("quizBox");
+const quizQ   = document.getElementById("quizQ");
+const quizTimer = document.getElementById("quizTimer");
+
+let quizData = [];
 let quizIndex = 0;
-let quizTimerRef = null;
+let timerRef = null;
 
-document.getElementById("quizBtn").onclick = () => {
+quizBtn.onclick = () => {
   const raw = JSON.parse(localStorage.getItem(QUIZ_KEY) || "[]");
-
   if (!Array.isArray(raw) || raw.length === 0) {
-    alert("Quiz के लिए अभी कोई प्रश्न उपलब्ध नहीं है।");
+    alert("Quiz के लिए कोई प्रश्न उपलब्ध नहीं है।");
     return;
   }
-
-  quizList = raw;
+  quizData = raw;
   quizIndex = 0;
-
-  document.getElementById("quizBox").style.display = "block";
+  quizBox.style.display = "block";
   runQuiz();
 };
 
-function runQuiz() {
-  if (quizIndex >= quizList.length) {
-    document.getElementById("quizBox").style.display = "none";
+function runQuiz(){
+  if (quizIndex >= quizData.length) {
+    quizBox.style.display = "none";
     return;
   }
 
-  const item = quizList[quizIndex];
-  const qEl = document.getElementById("quizQ");
-  const tEl = document.getElementById("quizTimer");
+  const item = quizData[quizIndex];
+  quizQ.innerText = item.q;
 
-  qEl.innerText = item.q;
   let t = 5;
-  tEl.innerText = t;
+  quizTimer.innerText = t;
 
-  clearInterval(quizTimerRef);
-
-  quizTimerRef = setInterval(() => {
+  clearInterval(timerRef);
+  timerRef = setInterval(() => {
     t--;
-    tEl.innerText = t;
-
+    quizTimer.innerText = t;
     if (t <= 0) {
-      clearInterval(quizTimerRef);
+      clearInterval(timerRef);
       quizIndex++;
       setTimeout(runQuiz, 500);
     }
   }, 1000);
-}
-  </script>
-
-<script>
-/* =================================================
-   🔒 SAFE DATA BRIDGE (NO OTHER APP AFFECTED)
-   ================================================= */
-const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
-
-/* Admin → KnowledgeBase sync */
-(function syncAdminToKB(){
-  const adminData = JSON.parse(localStorage.getItem(ADMIN_KEY)||"[]");
-  if(!window.KnowledgeBase || !Array.isArray(adminData)) return;
-
-  adminData.forEach(item=>{
-    KnowledgeBase.add({
-      id: item.id,
-      keywords: item.q.split(" ").slice(0,5),
-      answer: item.a
-    });
-  });
-})();
-
-/* ================= UI ================= */
-adminBtn.onclick = ()=>location.href="admin.html";
-
-/* ================= QUIZ ================= */
-let quizList=[], qi=0, timer=null;
-
-quizBtn.onclick = ()=>{
-  quizList = KnowledgeBase.all ? KnowledgeBase.all() : [];
-  if(!quizList.length){
-    alert("Quiz के लिए प्रश्न उपलब्ध नहीं हैं");
-    return;
-  }
-  qi=0;
-  quizBox.style.display="block";
-  startQuiz();
-};
-
-function startQuiz(){
-  const q = quizList[qi];
-  quizQ.innerText = q.answer || q.text || "प्रश्न";
-  let t=5;
-  quizTimer.innerText=t;
-  timer=setInterval(()=>{
-    t--; quizTimer.innerText=t;
-    if(t===0){
-      clearInterval(timer);
-      qi++;
-      if(qi<quizList.length) startQuiz();
-      else quizBox.style.display="none";
-    }
-  },1000);
 }
 </script>
 
