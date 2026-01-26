@@ -1,161 +1,164 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>अंजली</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>अंजली</title>
 
-  <style>
-    :root{
-      --bg1:#fff3ea;
-      --bg2:#ffe1cf;
-      --accent:#8b2d2d;
-      --soft:#b35c5c;
-      --card:#ffffff;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif;
-      background: linear-gradient(135deg,var(--bg1),var(--bg2));
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .card{
-      width:92%;
-      max-width:420px;
-      background:var(--card);
-      border-radius:22px;
-      padding:22px 18px 24px;
-      box-shadow:0 14px 30px rgba(0,0,0,.12);
-      text-align:center;
-    }
-    .avatar{
-      width:96px;
-      height:96px;
-      margin:6px auto 12px;
-      border-radius:50%;
-      overflow:hidden;
-      border:3px solid #f0c4c4;
-      box-shadow:0 6px 14px rgba(0,0,0,.15);
-    }
-    .avatar img{width:100%;height:100%;object-fit:cover;}
-    .title{font-size:26px;color:var(--accent);margin:6px 0 4px;}
-    .subtitle{font-size:14px;color:#555;margin-bottom:14px;}
-    .status{
-      background:#fff7f4;
-      border:1px solid #f3d4c7;
-      border-radius:14px;
-      padding:10px 12px;
-      font-size:13px;
-      color:#6b2c2c;
-      margin:10px 0;
-    }
-    .actions{
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      flex-wrap:wrap;
-      margin-top:8px;
-    }
-    .btn{
-      border:none;
-      border-radius:16px;
-      padding:12px 16px;
-      font-size:14px;
-      cursor:pointer;
-      background:linear-gradient(180deg,#c96a6a,#a13f3f);
-      color:#fff;
-    }
-    .btn.secondary{
-      background:#fff;
-      color:var(--soft);
-      border:1px dashed #e6b2b2;
-    }
-    .footer{
-      margin-top:14px;
-      font-size:11px;
-      color:#777;
-      text-align:center;
-    }
-  </style>
+<style>
+:root{
+  --bg1:#fff3ea;--bg2:#ffe1cf;--accent:#8b2d2d;
+  --soft:#b35c5c;--card:#ffffff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;
+  font-family:system-ui,"Noto Sans Devanagari",sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  display:flex;align-items:center;justify-content:center;
+}
+.card{
+  width:94%;max-width:440px;background:var(--card);
+  border-radius:22px;padding:20px;
+  box-shadow:0 14px 30px rgba(0,0,0,.12);
+  text-align:center;
+}
+.title{font-size:26px;color:var(--accent)}
+.subtitle{font-size:14px;color:#555;margin-bottom:12px}
+.status{
+  background:#fff7f4;border:1px solid #f3d4c7;
+  border-radius:14px;padding:10px;font-size:13px;
+  margin:8px 0;color:#6b2c2c;
+}
+.actions{
+  display:flex;gap:10px;justify-content:center;
+  flex-wrap:wrap;margin-top:10px;
+}
+.btn{
+  border:none;border-radius:16px;
+  padding:12px 16px;font-size:14px;cursor:pointer;
+  background:linear-gradient(180deg,#c96a6a,#a13f3f);
+  color:#fff;
+}
+.btn.secondary{
+  background:#fff;color:var(--soft);
+  border:1px dashed #e6b2b2;
+}
+
+/* ===== QUIZ ===== */
+.quiz-box{
+  margin-top:14px;
+  padding:14px;
+  border-radius:16px;
+  background:#fff7f4;
+  border:1px solid #f3d4c7;
+  display:none;
+}
+.quiz-q{font-weight:bold;margin-bottom:8px}
+.quiz-timer{
+  font-size:22px;font-weight:bold;color:#a13f3f;
+}
+.footer{font-size:11px;color:#777;margin-top:12px}
+</style>
 </head>
 
 <body>
 <main class="card">
 
-  <!-- AVATAR -->
-  <div class="avatar">
-    <img src="avatar.png" alt="Anjali Avatar">
-  </div>
+<div class="title">अंजली</div>
+<div class="subtitle">स्नेहपूर्ण • समझदार • मर्यादित</div>
 
-  <div class="title">अंजली</div>
-  <div class="subtitle">स्नेहपूर्ण • समझदार • मर्यादित</div>
+<div class="status" id="appStatus">अंजली तैयार है</div>
 
-  <!-- STATUS -->
-  <div class="status" id="appStatus">अंजली तैयार है</div>
-  <div class="status" id="emotionStatus">भाव: 😌 शांत</div>
+<div class="actions">
+  <button class="btn" id="startBtn">शुरू करें</button>
+  <button class="btn" id="quizBtn">🧠 Quiz</button>
+  <button class="btn secondary" id="adminBtn">🔐 Admin</button>
+</div>
 
-  <!-- ACTIONS -->
-  <div class="actions">
-    <button class="btn" id="startBtn">शुरू करें</button>
-    <button class="btn" id="speakBtn">🔊 अंजली बोले</button>
-    <button class="btn secondary" id="adminBtn">🔐 Admin Panel</button>
-    <button class="btn" id="talkBtn">🌸 अंजली से बात करें</button>
-  </div>
+<!-- QUIZ UI -->
+<div class="quiz-box" id="quizBox">
+  <div class="quiz-q" id="quizQ"></div>
+  <div>⏳ समय शेष</div>
+  <div class="quiz-timer" id="quizTimer">5</div>
+</div>
 
-  <div class="footer">Foundation • Core-Stable</div>
+<div class="footer">Core-Stable • Quiz-Enabled</div>
 
-  <!-- ================= CORE (BRAIN) ================= -->
+<!-- ================= CORE ================= -->
+<script src="core/AmbiguityResolver.js"></script>
+<script src="core/ThinkingEngine.js"></script>
+<script src="core/ContextMemory.js"></script>
 
-  <script src="core/AmbiguityResolver.js"></script>
-  <script src="core/ThinkingEngine.js"></script>
-  <script src="core/ContextMemory.js"></script>
+<!-- ================= LEARNING ================= -->
+<script src="learning/KnowledgeBase.js"></script>
+<script src="learning/ExperienceMemory.js"></script>
 
-  <!-- ================= LEARNING ================= -->
+<!-- ================= ANSWER ================= -->
+<script src="answer/KnowledgeAnswerEngine.js"></script>
 
-  <script src="learning/KnowledgeBase.js"></script>
-  <script src="learning/ExperienceMemory.js"></script>
-
-  <!-- ================= ANSWER ================= -->
-
-  <script src="answer/KnowledgeAnswerEngine.js"></script>
-
-  <!-- ================= VOICE (OPTIONAL BUT INCLUDED) ================= -->
-
-  <script src="voice/tts.js"></script>
-  <script src="voice/stt.js"></script>
-
-  <!-- ================= PRESENCE ================= -->
+<!-- ================= VOICE ================= -->
+<script src="voice/tts.js"></script>
+<script src="voice/stt.js"></script>
 
   <script src="presence/AnjaliPresence.js"></script>
+  
+<!-- ================= MAIN ================= -->
+<script src="main.js"></script>
 
-  <!-- ================= MAIN GLUE ================= -->
+<script>
+/* =================================================
+   🔒 SAFE DATA BRIDGE (NO OTHER APP AFFECTED)
+   ================================================= */
+const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
 
-  <script src="main.js"></script>
+/* Admin → KnowledgeBase sync */
+(function syncAdminToKB(){
+  const adminData = JSON.parse(localStorage.getItem(ADMIN_KEY)||"[]");
+  if(!window.KnowledgeBase || !Array.isArray(adminData)) return;
 
-  <!-- ================= INDEX BEHAVIOUR ================= -->
-  <script>
-    document.getElementById("adminBtn").onclick = () => {
-      window.location.href = "admin.html";
-    };
+  adminData.forEach(item=>{
+    KnowledgeBase.add({
+      id: item.id,
+      keywords: item.q.split(" ").slice(0,5),
+      answer: item.a
+    });
+  });
+})();
 
-    document.getElementById("startBtn").onclick = () => {
-      document.getElementById("appStatus").innerText = "अंजली सोच रही है…";
-    };
+/* ================= UI ================= */
+adminBtn.onclick = ()=>location.href="admin.html";
 
-    document.getElementById("speakBtn").onclick = () => {
-      if (window.AnjaliTTS) {
-        AnjaliTTS.speak("मैं आपकी सहायता के लिए तैयार हूँ।");
-      }
-    };
+/* ================= QUIZ ================= */
+let quizList=[], qi=0, timer=null;
 
-    document.getElementById("talkBtn").onclick = () => {
-      window.location.href = "talk_to_anjali.html";
-    };
-  </script>
+quizBtn.onclick = ()=>{
+  quizList = KnowledgeBase.all ? KnowledgeBase.all() : [];
+  if(!quizList.length){
+    alert("Quiz के लिए प्रश्न उपलब्ध नहीं हैं");
+    return;
+  }
+  qi=0;
+  quizBox.style.display="block";
+  startQuiz();
+};
+
+function startQuiz(){
+  const q = quizList[qi];
+  quizQ.innerText = q.answer || q.text || "प्रश्न";
+  let t=5;
+  quizTimer.innerText=t;
+  timer=setInterval(()=>{
+    t--; quizTimer.innerText=t;
+    if(t===0){
+      clearInterval(timer);
+      qi++;
+      if(qi<quizList.length) startQuiz();
+      else quizBox.style.display="none";
+    }
+  },1000);
+}
+</script>
 
 </main>
 </body>
