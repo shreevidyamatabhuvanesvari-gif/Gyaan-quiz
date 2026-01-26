@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meaning Engine</title>
+
+  <!-- ===============================
+       BASIC STYLE (MINIMAL)
+       =============================== -->
+  <style>
+    body {
+      margin: 0;
+      font-family: "Noto Sans Devanagari", system-ui, sans-serif;
+      background: #f4f6f8;
+      color: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .app {
+      width: 94%;
+      max-width: 520px;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    button.secondary {
+      background: #64748b;
+    }
+
+    .output {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      min-height: 60px;
+      font-size: 15px;
+    }
+
+    .clarify {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #7c2d12;
+    }
+
+    footer {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+  <h1>अर्थ-आधारित प्रश्न इंजन</h1>
+
+  <textarea id="questionInput" placeholder="यहाँ प्रश्न लिखें…"></textarea>
+
+  <div class="actions">
+    <button onclick="ask()">पूछें</button>
+    <button class="secondary" onclick="goAdmin()">Admin Panel</button>
+  </div>
+
+  <div id="output" class="output">
+    उत्तर यहाँ दिखाई देगा।
+  </div>
+
+  <div id="clarify" class="clarify"></div>
+
+  <footer>
+    Meaning Engine • Standalone Repo
+  </footer>
+</div>
+
+<!-- ======================================================
+     CORE THINKING FILES (ORDER MATTERS)
+     ====================================================== -->
+
+<!-- Ambiguity resolver (decision-level only) -->
+<script src="engine/AmbiguityResolver.js"></script>
+
+<!-- Thinking engine (domain-agnostic) -->
+<script src="engine/ThinkingEngine.js"></script>
+
+<!-- ======================================================
+     OPTIONAL / KNOWLEDGE LOADING
+     (You may add Admin-driven concepts later)
+     ====================================================== -->
+<script src="engine/KnowledgeBootstrap.js"></script>
+
+<!-- ======================================================
+     INDEX LOGIC (UI → ENGINE)
+     ====================================================== -->
+<script>
+  function ask() {
+    const q = document.getElementById("questionInput").value;
+    const out = document.getElementById("output");
+    const clarifyBox = document.getElementById("clarify");
+
+    clarifyBox.textContent = "";
+
+    if (!q.trim()) {
+      out.textContent = "कृपया प्रश्न लिखें।";
+      return;
+    }
+
+    const result = ThinkingEngine.think(q);
+
+    if (result.clarify) {
+      out.textContent = "थोड़ी अस्पष्टता है।";
+      clarifyBox.textContent =
+        "कृपया स्पष्ट करें: " + result.options.join(" / ");
+      return;
+    }
+
+    out.textContent = result.text || "कोई उत्तर उपलब्ध नहीं।";
+  }
+
+  function goAdmin() {
+    // Admin panel इस repo का ही होगा
+    window.location.href = "admin.html";
+  }
+</script>
+
+</body>
+</html>
