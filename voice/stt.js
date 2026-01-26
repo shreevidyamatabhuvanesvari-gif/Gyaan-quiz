@@ -1,155 +1,209 @@
-/* =====================================================
-   voice/stt.js
+/* ==========================================================
+   voice/stt.js — HUMAN-OBEDIENT STT CORE (FINAL)
    PURPOSE:
-   - Interrupt-aware listening (रुको / चुप / बदलो)
-   - Adaptive 2-minute rolling listening window
-   - Non-authoritarian STT
-   ===================================================== */
+   - Continuous listening (2-minute window)
+   - Immediate command obedience (stop / interrupt / change / pause / resume)
+   - Zero interference with ThinkingEngine logic
+   - No learning, no knowledge mutation
+   ========================================================== */
 
-(function (global) {
+(function () {
   "use strict";
 
-  // ====== Web Speech Support Check ======
+  /* ===============================
+     SAFETY CHECK
+     =============================== */
   const SpeechRecognition =
-    global.SpeechRecognition || global.webkitSpeechRecognition;
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    console.warn("❌ SpeechRecognition API समर्थित नहीं है");
+    console.warn("STT not supported in this browser.");
     return;
   }
 
-  // ====== CONFIG ======
-  const MAX_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
-  const INTERRUPT_KEYWORDS = [
-    "रुको",
-    "चुप",
-    "बंद",
-    "अगला",
-    "प्रश्न बदलो",
-    "यह नहीं"
-  ];
+  /* ===============================
+     CONFIG
+     =============================== */
+  const LISTEN_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
 
-  // ====== STATE ======
-  let recognition = null;
-  let listening = false;
-  let windowTimer = null;
-  let lastHeardAt = 0;
-
-  // ====== CALLBACK HOOKS (Index / Engine set करेगा) ======
-  const Hooks = {
-    onText: null,        // (text) => {}
-    onInterrupt: null,  // (keyword) => {}
-    onStop: null        // () => {}
+  /* ===============================
+     COMMAND DICTIONARY (LOCKED)
+     =============================== */
+  const COMMANDS = {
+    STOP: [
+      "रुको", "बस", "चुप", "चुप रहो", "अभी बंद", "मत बोलो", "रोक दो"
+    ],
+    INTERRUPT: [
+      "सुनो", "एक मिनट", "रुक जाओ", "मेरी बात सुनो", "बीच में मत बोलो"
+    ],
+    CHANGE: [
+      "प्रश्न बदलो", "अगला", "दूसरा सवाल", "यह नहीं", "कुछ और", "बदल दो"
+    ],
+    PAUSE: [
+      "रुको ज़रा", "ठहरो", "रुकिए", "थोड़ा समय दो", "wait"
+    ],
+    RESUME: [
+      "जारी रखो", "फिर से शुरू", "continue", "आगे बताओ"
+    ]
   };
 
-  // ====== INTERNAL HELPERS ======
-  function resetWindowTimer() {
-    clearTimeout(windowTimer);
-    windowTimer = setTimeout(() => {
-      stopListening();
-    }, MAX_WINDOW_MS);
+  /* ===============================
+     STATE
+     =============================== */
+  let recognition = null;
+  let listenTimer = null;
+  let paused = false;
+
+  /* ===============================
+     UTILS
+     =============================== */
+  function normalize(text) {
+    if (typeof text !== "string") return "";
+    return text.trim().toLowerCase();
   }
 
-  function containsInterrupt(text) {
-    return INTERRUPT_KEYWORDS.find(k => text.includes(k)) || null;
+  function matchCommand(text) {
+    for (const type in COMMANDS) {
+      if (
+        COMMANDS[type].some(cmd =>
+          text.includes(cmd.toLowerCase())
+        )
+      ) {
+        return type;
+      }
+    }
+    return null;
   }
 
-  // ====== CORE FUNCTIONS ======
-  function startListening() {
-    if (listening) return;
+  function resetListenWindow() {
+    clearTimeout(listenTimer);
+    listenTimer = setTimeout(() => {
+      restartRecognition();
+    }, LISTEN_WINDOW_MS);
+  }
+
+  function stopTTS() {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  /* ===============================
+     CORE CONTROL HANDLERS
+     =============================== */
+  function handleCommand(cmdType, rawText) {
+    switch (cmdType) {
+      case "STOP":
+      case "INTERRUPT":
+        stopTTS();
+        paused = false;
+        break;
+
+      case "PAUSE":
+        stopTTS();
+        paused = true;
+        break;
+
+      case "RESUME":
+        paused = false;
+        break;
+
+      case "CHANGE":
+        stopTTS();
+        paused = false;
+        if (window.AnjaliPresence?.onChangeRequest) {
+          window.AnjaliPresence.onChangeRequest();
+        }
+        break;
+    }
+
+    if (window.AnjaliPresence?.onImmediateCommand) {
+      window.AnjaliPresence.onImmediateCommand(cmdType, rawText);
+    }
+  }
+
+  function forwardToThinking(text) {
+    if (paused) return;
+
+    if (window.ThinkingEngine?.think) {
+      window.ThinkingEngine.think(text);
+    }
+  }
+
+  /* ===============================
+     RECOGNITION LIFECYCLE
+     =============================== */
+  function startRecognition() {
+    if (recognition) return;
 
     recognition = new SpeechRecognition();
     recognition.lang = "hi-IN";
-    recognition.continuous = true;     // लगातार सुनना
+    recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onstart = () => {
-      listening = true;
-      lastHeardAt = Date.now();
-      resetWindowTimer();
-      console.log("🎧 STT सुनना शुरू");
-    };
+    recognition.onresult = event => {
+      const result =
+        event.results[event.results.length - 1][0].transcript;
 
-    recognition.onresult = (event) => {
-      const result = event.results[event.results.length - 1];
-      const text = result[0].transcript.trim();
-
+      const text = normalize(result);
       if (!text) return;
 
-      console.log("👂 सुना:", text);
+      resetListenWindow();
 
-      lastHeardAt = Date.now();
-      resetWindowTimer(); // 🔁 2 मिनट फिर से शुरू
-
-      // 🔴 Interrupt Check
-      const interrupt = containsInterrupt(text);
-      if (interrupt) {
-        console.log("🛑 Interrupt मिला:", interrupt);
-
-        if (typeof Hooks.onInterrupt === "function") {
-          Hooks.onInterrupt(interrupt, text);
-        }
-        return;
-      }
-
-      // 🧠 Normal Text Flow
-      if (typeof Hooks.onText === "function") {
-        Hooks.onText(text);
+      const cmd = matchCommand(text);
+      if (cmd) {
+        handleCommand(cmd, text);
+      } else {
+        forwardToThinking(text);
       }
     };
 
-    recognition.onerror = (e) => {
-      console.warn("⚠️ STT error:", e.error);
+    recognition.onerror = () => {
+      restartRecognition();
     };
 
     recognition.onend = () => {
-      // अगर window के अंदर है तो फिर से चालू
-      if (listening && Date.now() - lastHeardAt < MAX_WINDOW_MS) {
-        recognition.start();
-      } else {
-        stopListening();
-      }
+      restartRecognition();
     };
 
     recognition.start();
+    resetListenWindow();
   }
 
-  function stopListening() {
-    listening = false;
-    clearTimeout(windowTimer);
+  function restartRecognition() {
+    try {
+      if (recognition) {
+        recognition.onend = null;
+        recognition.stop();
+        recognition = null;
+      }
+    } catch (_) {}
 
-    if (recognition) {
-      try { recognition.stop(); } catch {}
-      recognition = null;
-    }
-
-    console.log("🔇 STT बंद");
-
-    if (typeof Hooks.onStop === "function") {
-      Hooks.onStop();
-    }
+    startRecognition();
   }
 
-  // ====== PUBLIC API ======
-  global.AnjaliSTT = {
-    start: startListening,
-    stop: stopListening,
-
-    onText(fn) {
-      Hooks.onText = fn;
+  /* ===============================
+     PUBLIC API (SAFE)
+     =============================== */
+  window.AnjaliSTT = {
+    start() {
+      startRecognition();
     },
-
-    onInterrupt(fn) {
-      Hooks.onInterrupt = fn;
+    stop() {
+      clearTimeout(listenTimer);
+      if (recognition) {
+        recognition.stop();
+        recognition = null;
+      }
     },
-
-    onStop(fn) {
-      Hooks.onStop = fn;
-    },
-
-    isListening() {
-      return listening;
+    isPaused() {
+      return paused;
     }
   };
 
-})(window);
+  /* ===============================
+     AUTO START
+     =============================== */
+  startRecognition();
+
+})();
