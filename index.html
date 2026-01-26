@@ -106,6 +106,59 @@ body{
 <!-- ================= MAIN ================= -->
 <script src="main.js"></script>
 
+  <script>
+/* ================= QUIZ (ADMIN STORE BASED) ================= */
+
+const QUIZ_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
+
+let quizList = [];
+let quizIndex = 0;
+let quizTimerRef = null;
+
+document.getElementById("quizBtn").onclick = () => {
+  const raw = JSON.parse(localStorage.getItem(QUIZ_KEY) || "[]");
+
+  if (!Array.isArray(raw) || raw.length === 0) {
+    alert("Quiz के लिए अभी कोई प्रश्न उपलब्ध नहीं है।");
+    return;
+  }
+
+  quizList = raw;
+  quizIndex = 0;
+
+  document.getElementById("quizBox").style.display = "block";
+  runQuiz();
+};
+
+function runQuiz() {
+  if (quizIndex >= quizList.length) {
+    document.getElementById("quizBox").style.display = "none";
+    return;
+  }
+
+  const item = quizList[quizIndex];
+  const qEl = document.getElementById("quizQ");
+  const tEl = document.getElementById("quizTimer");
+
+  qEl.innerText = item.q;
+  let t = 5;
+  tEl.innerText = t;
+
+  clearInterval(quizTimerRef);
+
+  quizTimerRef = setInterval(() => {
+    t--;
+    tEl.innerText = t;
+
+    if (t <= 0) {
+      clearInterval(quizTimerRef);
+      quizIndex++;
+      setTimeout(runQuiz, 500);
+    }
+  }, 1000);
+}
+  </script>
+
 <script>
 /* =================================================
    🔒 SAFE DATA BRIDGE (NO OTHER APP AFFECTED)
