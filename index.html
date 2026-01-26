@@ -55,6 +55,14 @@ body{
   display:none;
 }
 .quiz-q{font-weight:bold;margin-bottom:8px}
+.quiz-a{
+  margin-top:10px;
+  padding:8px;
+  background:#fff;
+  border-radius:10px;
+  color:#333;
+  display:none;
+}
 .quiz-timer{
   font-size:22px;font-weight:bold;color:#a13f3f;
 }
@@ -81,9 +89,10 @@ body{
   <div class="quiz-q" id="quizQ"></div>
   <div>⏳ समय शेष</div>
   <div class="quiz-timer" id="quizTimer">5</div>
+  <div class="quiz-a" id="quizA"></div>
 </div>
 
-<div class="footer">Core-Stable • Quiz-Enabled</div>
+<div class="footer">Core-Stable • Quiz-Verified</div>
 
 <!-- ================= CORE ================= -->
 <script src="core/AmbiguityResolver.js"></script>
@@ -108,28 +117,22 @@ body{
 <script src="main.js"></script>
 
 <script>
-/* ================= BASIC UI ================= */
-document.getElementById("adminBtn").onclick = () => {
-  window.location.href = "admin.html";
-};
+/* ========== BASIC UI ========== */
+adminBtn.onclick = () => location.href="admin.html";
+startBtn.onclick = () => appStatus.innerText="अंजली सक्रिय है…";
 
-document.getElementById("startBtn").onclick = () => {
-  document.getElementById("appStatus").innerText = "अंजली सक्रिय है…";
-};
-
-/* ================= QUIZ (SAFE & SINGLE) ================= */
+/* ========== QUIZ ENGINE (HARDENED) ========== */
 const QUIZ_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
-
-const quizBtn = document.getElementById("quizBtn");
-const quizBox = document.getElementById("quizBox");
-const quizQ   = document.getElementById("quizQ");
-const quizTimer = document.getElementById("quizTimer");
 
 let quizData = [];
 let quizIndex = 0;
 let timerRef = null;
 
 quizBtn.onclick = () => {
+  // full reset
+  clearInterval(timerRef);
+  speechSynthesis.cancel();
+
   const raw = JSON.parse(localStorage.getItem(QUIZ_KEY) || "[]");
   if (!Array.isArray(raw) || raw.length === 0) {
     alert("Quiz के लिए कोई प्रश्न उपलब्ध नहीं है।");
@@ -138,17 +141,26 @@ quizBtn.onclick = () => {
   quizData = raw;
   quizIndex = 0;
   quizBox.style.display = "block";
+  appStatus.innerText = "Quiz चल रहा है…";
   runQuiz();
 };
 
 function runQuiz(){
   if (quizIndex >= quizData.length) {
     quizBox.style.display = "none";
+    quizQ.innerText = "";
+    quizA.innerText = "";
+    appStatus.innerText = "Quiz पूर्ण हुआ";
     return;
   }
 
-  const item = quizData[quizIndex];
-  quizQ.innerText = item.q;
+  const item = quizData[quizIndex] || {};
+  const qText = item.q || "प्रश्न उपलब्ध नहीं";
+  const aText = item.a || "उत्तर उपलब्ध नहीं";
+
+  quizQ.innerText = "❓ " + qText;
+  quizA.innerText = "✅ उत्तर: " + aText;
+  quizA.style.display = "none";
 
   let t = 5;
   quizTimer.innerText = t;
@@ -157,10 +169,31 @@ function runQuiz(){
   timerRef = setInterval(() => {
     t--;
     quizTimer.innerText = t;
+
     if (t <= 0) {
       clearInterval(timerRef);
-      quizIndex++;
-      setTimeout(runQuiz, 500);
+
+      quizA.style.display = "block";
+
+      // 🔊 TTS
+      if (window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(aText);
+        u.lang = "hi-IN";
+        u.rate = 0.75;
+        u.pitch = 1.05;
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      }
+
+      // future-safe learning hook
+      if (window.ExperienceMemory?.recordQuizExposure) {
+        ExperienceMemory.recordQuizExposure(qText);
+      }
+
+      setTimeout(() => {
+        quizIndex++;
+        runQuiz();
+      }, 2000);
     }
   }, 1000);
 }
