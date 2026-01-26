@@ -92,7 +92,7 @@ body{
   <div class="quiz-a" id="quizA"></div>
 </div>
 
-<div class="footer">Core-Stable • Quiz-Verified</div>
+<div class="footer">Core-Stable • Quiz-Synced</div>
 
 <!-- ================= CORE ================= -->
 <script src="core/AmbiguityResolver.js"></script>
@@ -121,7 +121,7 @@ body{
 adminBtn.onclick = () => location.href="admin.html";
 startBtn.onclick = () => appStatus.innerText="अंजली सक्रिय है…";
 
-/* ========== QUIZ ENGINE (HARDENED) ========== */
+/* ========== QUIZ ENGINE (TTS-SYNCED) ========== */
 const QUIZ_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
 
 let quizData = [];
@@ -129,7 +129,6 @@ let quizIndex = 0;
 let timerRef = null;
 
 quizBtn.onclick = () => {
-  // full reset
   clearInterval(timerRef);
   speechSynthesis.cancel();
 
@@ -169,33 +168,38 @@ function runQuiz(){
   timerRef = setInterval(() => {
     t--;
     quizTimer.innerText = t;
-
     if (t <= 0) {
       clearInterval(timerRef);
-
-      quizA.style.display = "block";
-
-      // 🔊 TTS
-      if (window.speechSynthesis) {
-        const u = new SpeechSynthesisUtterance(aText);
-        u.lang = "hi-IN";
-        u.rate = 0.75;
-        u.pitch = 1.05;
-        speechSynthesis.cancel();
-        speechSynthesis.speak(u);
-      }
-
-      // future-safe learning hook
-      if (window.ExperienceMemory?.recordQuizExposure) {
-        ExperienceMemory.recordQuizExposure(qText);
-      }
-
-      setTimeout(() => {
-        quizIndex++;
-        runQuiz();
-      }, 2000);
+      revealAndSpeakAnswer(aText, qText);
     }
   }, 1000);
+}
+
+function revealAndSpeakAnswer(answerText, questionText){
+  quizA.style.display = "block";
+
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance(answerText);
+    u.lang = "hi-IN";
+    u.rate = 0.75;
+    u.pitch = 1.05;
+
+    u.onend = () => {
+      // 🔑 NEXT QUESTION ONLY AFTER TTS ENDS
+      if (window.ExperienceMemory?.recordQuizExposure) {
+        ExperienceMemory.recordQuizExposure(questionText);
+      }
+      quizIndex++;
+      runQuiz();
+    };
+
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } else {
+    // fallback (very rare)
+    quizIndex++;
+    runQuiz();
+  }
 }
 </script>
 
