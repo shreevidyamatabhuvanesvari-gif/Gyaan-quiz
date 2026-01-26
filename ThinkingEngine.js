@@ -101,6 +101,7 @@
       .sort((a, b) => b.score - a.score);
   }
 
+
   /* ===============================
      4. PREFRONTAL (ENTROPY CHECK)
      =============================== */
@@ -164,28 +165,37 @@
      THINK
      =============================== */
   function think(input) {
-    const norm = thalamus(input);
-    if (!norm) return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
-
-    const matches = cortex(norm);
-    if (!matches.length)
-      return { text: "इस प्रश्न का उत्तर अभी मेरे पास नहीं है।" };
-
-    const ranked = basalGanglia(matches);
-    const decision = prefrontal(ranked);
-
-    if (!decision)
-      return { text: "मैं इस प्रश्न पर निश्चित निर्णय नहीं ले सका।" };
-
-    if (decision.clarify) {
-      return { clarify: true, options: decision.options };
-    }
-
-    return {
-      text: decision.concept.respond(),
-      conceptId: decision.concept.id
-    };
+  const norm = thalamus(input);
+  if (!norm) {
+    return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
   }
+
+  const matches = cortex(norm);
+  if (!matches.length) {
+    return { text: "इस प्रश्न का उत्तर अभी मेरे पास नहीं है।" };
+  }
+
+  const ranked = basalGanglia(matches);
+  if (!ranked) {
+    return { text: "मैं इस प्रश्न पर निर्णय नहीं ले सका।" };
+  }
+
+  // ✅ एकमात्र निर्णय बिंदु
+  const decision = AmbiguityResolver.resolve(ranked, Memory.bias);
+
+  if (!decision) {
+    return { text: "मैं इस प्रश्न पर निश्चित निर्णय नहीं ले सका।" };
+  }
+
+  if (decision.clarify) {
+    return { clarify: true, options: decision.options };
+  }
+
+  return {
+    text: decision.concept.respond(),
+    conceptId: decision.concept.id
+  };
+}
 
   /* ===============================
      EXPORT
