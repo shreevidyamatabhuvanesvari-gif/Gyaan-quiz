@@ -84,7 +84,6 @@ body{
   <button class="btn secondary" id="adminBtn">🔐 Admin</button>
 </div>
 
-<!-- QUIZ UI -->
 <div class="quiz-box" id="quizBox">
   <div class="quiz-q" id="quizQ"></div>
   <div>⏳ समय शेष</div>
@@ -92,114 +91,78 @@ body{
   <div class="quiz-a" id="quizA"></div>
 </div>
 
-<div class="footer">Core-Stable • Quiz-Synced</div>
-
-<!-- ================= CORE ================= -->
-<script src="core/AmbiguityResolver.js"></script>
-<script src="core/ThinkingEngine.js"></script>
-<script src="core/ContextMemory.js"></script>
-
-<!-- ================= LEARNING ================= -->
-<script src="learning/KnowledgeBase.js"></script>
-<script src="learning/ExperienceMemory.js"></script>
-
-<!-- ================= ANSWER ================= -->
-<script src="answer/KnowledgeAnswerEngine.js"></script>
-
-<!-- ================= VOICE ================= -->
-<script src="voice/tts.js"></script>
-<script src="voice/stt.js"></script>
-
-<!-- ================= PRESENCE ================= -->
-<script src="presence/AnjaliPresence.js"></script>
-
-<!-- ================= MAIN ================= -->
-<script src="main.js"></script>
+<div class="footer">Core-Stable • Quiz-Full-TTS</div>
 
 <script>
-/* ========== BASIC UI ========== */
 adminBtn.onclick = () => location.href="admin.html";
-startBtn.onclick = () => appStatus.innerText="अंजली सक्रिय है…";
 
-/* ========== QUIZ ENGINE (TTS-SYNCED) ========== */
 const QUIZ_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
+let quizData=[], quizIndex=0, timerRef=null;
 
-let quizData = [];
-let quizIndex = 0;
-let timerRef = null;
-
-quizBtn.onclick = () => {
-  clearInterval(timerRef);
+quizBtn.onclick = ()=>{
   speechSynthesis.cancel();
+  clearInterval(timerRef);
 
-  const raw = JSON.parse(localStorage.getItem(QUIZ_KEY) || "[]");
-  if (!Array.isArray(raw) || raw.length === 0) {
-    alert("Quiz के लिए कोई प्रश्न उपलब्ध नहीं है।");
+  quizData = JSON.parse(localStorage.getItem(QUIZ_KEY)||"[]");
+  if(!quizData.length){
+    alert("Quiz के लिए कोई प्रश्न नहीं है");
     return;
   }
-  quizData = raw;
-  quizIndex = 0;
-  quizBox.style.display = "block";
-  appStatus.innerText = "Quiz चल रहा है…";
-  runQuiz();
+  quizIndex=0;
+  quizBox.style.display="block";
+  appStatus.innerText="Quiz चल रहा है…";
+  askQuestion();
 };
 
-function runQuiz(){
-  if (quizIndex >= quizData.length) {
-    quizBox.style.display = "none";
-    quizQ.innerText = "";
-    quizA.innerText = "";
-    appStatus.innerText = "Quiz पूर्ण हुआ";
+function askQuestion(){
+  if(quizIndex>=quizData.length){
+    quizBox.style.display="none";
+    appStatus.innerText="Quiz पूर्ण हुआ";
     return;
   }
 
-  const item = quizData[quizIndex] || {};
-  const qText = item.q || "प्रश्न उपलब्ध नहीं";
-  const aText = item.a || "उत्तर उपलब्ध नहीं";
+  const {q,a} = quizData[quizIndex];
+  quizQ.innerText="❓ "+q;
+  quizA.style.display="none";
 
-  quizQ.innerText = "❓ " + qText;
-  quizA.innerText = "✅ उत्तर: " + aText;
-  quizA.style.display = "none";
-
-  let t = 5;
-  quizTimer.innerText = t;
-
-  clearInterval(timerRef);
-  timerRef = setInterval(() => {
-    t--;
-    quizTimer.innerText = t;
-    if (t <= 0) {
-      clearInterval(timerRef);
-      revealAndSpeakAnswer(aText, qText);
-    }
-  }, 1000);
+  speak(q, startTimer);
 }
 
-function revealAndSpeakAnswer(answerText, questionText){
-  quizA.style.display = "block";
+function startTimer(){
+  let t=5;
+  quizTimer.innerText=t;
+  clearInterval(timerRef);
+  timerRef=setInterval(()=>{
+    t--;
+    quizTimer.innerText=t;
+    if(t<=0){
+      clearInterval(timerRef);
+      revealAnswer();
+    }
+  },1000);
+}
 
-  if (window.speechSynthesis) {
-    const u = new SpeechSynthesisUtterance(answerText);
-    u.lang = "hi-IN";
-    u.rate = 0.75;
-    u.pitch = 1.05;
-
-    u.onend = () => {
-      // 🔑 NEXT QUESTION ONLY AFTER TTS ENDS
-      if (window.ExperienceMemory?.recordQuizExposure) {
-        ExperienceMemory.recordQuizExposure(questionText);
-      }
-      quizIndex++;
-      runQuiz();
-    };
-
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  } else {
-    // fallback (very rare)
+function revealAnswer(){
+  const a = quizData[quizIndex].a;
+  quizA.innerText="✅ उत्तर: "+a;
+  quizA.style.display="block";
+  speak(a, ()=>{
     quizIndex++;
-    runQuiz();
+    askQuestion();
+  });
+}
+
+function speak(text, onDone){
+  if(!window.speechSynthesis){
+    onDone(); return;
   }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang="hi-IN";
+  u.rate=0.75;
+  u.pitch=1.05;
+  u.onend=onDone;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
 }
 </script>
 
