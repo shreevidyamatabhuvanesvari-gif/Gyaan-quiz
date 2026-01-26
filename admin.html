@@ -12,7 +12,6 @@
       background:#f4f6f8;
       color:#111;
     }
-
     header{
       background:#1f2937;
       color:#fff;
@@ -21,37 +20,32 @@
       justify-content:space-between;
       align-items:center;
     }
-
     header button{
       border:none;
       padding:8px 14px;
       border-radius:10px;
-      cursor:pointer;
       background:#2563eb;
       color:#fff;
+      cursor:pointer;
       font-size:14px;
     }
-
     main{
       padding:14px;
       display:flex;
       gap:14px;
       flex-wrap:wrap;
     }
-
     .panel{
       background:#fff;
       border-radius:14px;
       padding:14px;
       box-shadow:0 6px 18px rgba(0,0,0,.1);
     }
-
     .form-panel{
       flex:1;
       min-width:280px;
       max-width:520px;
     }
-
     .list-panel{
       flex:1;
       min-width:260px;
@@ -59,40 +53,28 @@
       max-height:75vh;
       overflow:auto;
     }
-
-    h2,h3{
-      margin-top:0;
-    }
-
     label{
-      display:block;
       font-weight:bold;
+      display:block;
       margin-top:10px;
       margin-bottom:4px;
     }
-
     textarea{
       width:100%;
       box-sizing:border-box;
-      min-height:90px;
       padding:10px;
       font-size:15px;
       border-radius:10px;
       border:1px solid #ccc;
       resize:vertical;
     }
-
-    .big{
-      min-height:160px;
-    }
-
+    .big{ min-height:160px; }
     .actions{
       margin-top:10px;
       display:flex;
       gap:8px;
       flex-wrap:wrap;
     }
-
     .actions button{
       border:none;
       border-radius:10px;
@@ -102,21 +84,15 @@
       background:#16a34a;
       color:#fff;
     }
-
-    .actions .secondary{
-      background:#64748b;
-    }
-
+    .actions .secondary{ background:#64748b; }
     .item{
       border-bottom:1px solid #eee;
       padding:8px 0;
     }
-
     .item b{
       display:block;
       margin-bottom:6px;
     }
-
     .item-actions button{
       margin-right:4px;
       border:none;
@@ -125,11 +101,8 @@
       font-size:12px;
       cursor:pointer;
     }
-
-    .delete{ background:#dc2626; color:#fff; }
     .edit{ background:#2563eb; color:#fff; }
-    .move{ background:#16a34a; color:#fff; }
-
+    .delete{ background:#dc2626; color:#fff; }
     footer{
       text-align:center;
       font-size:12px;
@@ -148,122 +121,142 @@
 
 <main>
 
-  <!-- ================= FORM PANEL ================= -->
+  <!-- ========= FORM PANEL ========= -->
   <section class="panel form-panel">
-    <h2>➕ नया ज्ञान जोड़ें</h2>
+    <h2 id="formTitle">➕ नया प्रश्न जोड़ें</h2>
 
-    <label>Concept ID (unique)</label>
-    <textarea id="cid" placeholder="जैसे: constitution_date"></textarea>
+    <label>प्रश्न</label>
+    <textarea id="q" placeholder="यहाँ प्रश्न लिखें..."></textarea>
 
-    <label>Signals (हर पंक्ति एक संकेत)</label>
-    <textarea id="signals" placeholder="संविधान लागू कब&#10;संविधान कब अमल में आया"></textarea>
-
-    <label>उत्तर / प्रतिक्रिया</label>
-    <textarea id="answer" class="big" placeholder="यहाँ उत्तर लिखें…"></textarea>
+    <label>उत्तर / लेख (हर पंक्ति नई पंक्ति में)</label>
+    <textarea id="a" class="big" placeholder="यहाँ उत्तर लिखें..."></textarea>
 
     <div class="actions">
-      <button onclick="addConcept()">💾 Save</button>
-      <button class="secondary" onclick="clearForm()">🧹 Clear</button>
+      <button onclick="saveItem()">💾 Save</button>
+      <button class="secondary" onclick="cancelEdit()">❌ Cancel Edit</button>
     </div>
   </section>
 
-  <!-- ================= LIST PANEL ================= -->
+  <!-- ========= LIST PANEL ========= -->
   <section class="panel list-panel">
-    <h3>📚 सभी Concepts</h3>
+    <h3>📚 सभी प्रश्न</h3>
     <div id="list"></div>
   </section>
 
 </main>
 
 <footer>
-  Core-safe • No Demo • Local Knowledge Only
+  Core-Safe • One-by-One Edit/Delete • No Mass Clear
 </footer>
 
-<!-- ================= CORE / LEARNING ================= -->
+<!-- =================================================
+     CORE & LEARNING SCRIPTS (ORDER MATTERS)
+     ================================================= -->
+
+<script src="core/AmbiguityResolver.js"></script>
+<script src="core/ThinkingEngine.js"></script>
+<script src="core/ContextMemory.js"></script>
 
 <script src="learning/KnowledgeBase.js"></script>
 <script src="learning/ExperienceMemory.js"></script>
 
-<!-- ================= ADMIN LOGIC ================= -->
+<script src="answer/KnowledgeAnswerEngine.js"></script>
+
+<!-- =================================================
+     ADMIN LOGIC (ISOLATED & SAFE)
+     ================================================= -->
 <script>
+  const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
+  let data = JSON.parse(localStorage.getItem(ADMIN_KEY)) || [];
+  let editId = null;
+
   function goIndex(){
     window.location.href = "index.html";
   }
 
-  function clearForm(){
-    cid.value="";
-    signals.value="";
-    answer.value="";
-  }
+  function saveItem(){
+    const question = q.value.trim();
+    const answer = a.value.trim();
 
-  function addConcept(){
-    const id = cid.value.trim();
-    const sig = signals.value.split("\n").map(s=>s.trim()).filter(Boolean);
-    const ans = answer.value.trim();
-
-    if(!id || !sig.length || !ans){
-      alert("सभी फ़ील्ड भरना अनिवार्य है");
+    if(!question || !answer){
+      alert("प्रश्न और उत्तर दोनों अनिवार्य हैं");
       return;
     }
 
-    KnowledgeBase.addConcept(id, sig, () => ans);
-    KnowledgeBase.save();
+    if(editId){
+      const item = data.find(x=>x.id===editId);
+      if(item){
+        item.q = question;
+        item.a = answer;
+      }
+    } else {
+      data.push({
+        id: Date.now().toString(),
+        q: question,
+        a: answer
+      });
+    }
 
-    clearForm();
-    renderList();
+    persist();
+    resetForm();
+    render();
   }
 
-  function delConcept(id){
-    if(!confirm("क्या यह Concept हटाना है?")) return;
-    KnowledgeBase.removeConcept(id);
-    KnowledgeBase.save();
-    renderList();
+  function editItem(id){
+    const item = data.find(x=>x.id===id);
+    if(!item) return;
+
+    editId = id;
+    q.value = item.q;
+    a.value = item.a;
+    formTitle.innerText = "✏️ प्रश्न संशोधित करें";
   }
 
-  function editConcept(id){
-    const c = KnowledgeBase.getConcept(id);
-    if(!c) return;
+  function deleteItem(id){
+    const item = data.find(x=>x.id===id);
+    if(!item) return;
 
-    cid.value = c.id;
-    signals.value = c.signals.join("\n");
-    answer.value = c.respond();
+    if(!confirm("क्या यह प्रश्न हटाना है?\nयह क्रिया वापस नहीं ली जा सकती।")){
+      return;
+    }
+
+    data = data.filter(x=>x.id!==id);
+    persist();
+    render();
   }
 
-  function upConcept(id){
-    KnowledgeBase.moveUp(id);
-    KnowledgeBase.save();
-    renderList();
+  function cancelEdit(){
+    resetForm();
   }
 
-  function downConcept(id){
-    KnowledgeBase.moveDown(id);
-    KnowledgeBase.save();
-    renderList();
+  function resetForm(){
+    q.value="";
+    a.value="";
+    editId=null;
+    formTitle.innerText="➕ नया प्रश्न जोड़ें";
   }
 
-  function renderList(){
-    const box = document.getElementById("list");
-    box.innerHTML = "";
+  function persist(){
+    localStorage.setItem(ADMIN_KEY, JSON.stringify(data));
+  }
 
-    KnowledgeBase.getAll().forEach(c=>{
-      const div = document.createElement("div");
+  function render(){
+    list.innerHTML="";
+    data.forEach(item=>{
+      const div=document.createElement("div");
       div.className="item";
-      div.innerHTML = `
-        <b>${c.id}</b>
+      div.innerHTML=`
+        <b>${item.q}</b>
         <div class="item-actions">
-          <button class="edit" onclick="editConcept('${c.id}')">✏️ Edit</button>
-          <button class="delete" onclick="delConcept('${c.id}')">❌ Delete</button>
-          <button class="move" onclick="upConcept('${c.id}')">⬆</button>
-          <button class="move" onclick="downConcept('${c.id}')">⬇</button>
+          <button class="edit" onclick="editItem('${item.id}')">✏️ Edit</button>
+          <button class="delete" onclick="deleteItem('${item.id}')">❌ Delete</button>
         </div>
       `;
-      box.appendChild(div);
+      list.appendChild(div);
     });
   }
 
-  // initial load
-  KnowledgeBase.load();
-  renderList();
+  render();
 </script>
 
 </body>
