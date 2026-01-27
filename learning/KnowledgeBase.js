@@ -2,7 +2,7 @@
    KnowledgeBase.js
    PURPOSE:
    - प्रमाणित, अपडेट-योग्य सत्य का स्थिर भंडार
-   - Read during runtime, Update via Admin only
+   - Read during runtime, Update/Delete one-by-one via Admin only
    ====================================================== */
 
 (function (global) {
@@ -83,23 +83,18 @@
       };
 
       if (idx >= 0) {
-        knowledge[idx] = record;
+        knowledge[idx] = record;   // update
       } else {
-        knowledge.push(record);
+        knowledge.push(record);   // insert
       }
       save();
     },
 
-    /** एक-एक करके हटाना (Admin only) */
+    /** ✅ केवल एक-एक करके हटाना (Admin only) */
     remove(id) {
+      const before = knowledge.length;
       knowledge = knowledge.filter(k => k.id !== id);
-      save();
-    },
-
-    /** ⚠️ पूर्ण साफ़ करना (जानबूझकर कठिन रखा गया) */
-    clearAll(confirmFn) {
-      if (typeof confirmFn === "function" && confirmFn() === true) {
-        knowledge = [];
+      if (knowledge.length !== before) {
         save();
       }
     }
