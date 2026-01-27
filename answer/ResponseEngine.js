@@ -1,95 +1,39 @@
 /* ======================================================
    ResponseEngine.js
    PURPOSE:
-   - ThinkingEngine के निर्णय को बोलने योग्य उत्तर में बदलना
-   - Interrupt / Clarify / Safe fallback संभालना
-   - कोई सीख नहीं, कोई सत्य-निर्णय नहीं
+   - ThinkingEngine के निर्णय को
+     मानव-पठनीय उत्तर में बदलना
+   - कोई सीख नहीं, कोई निर्णय नहीं
+   - केवल सुरक्षित प्रस्तुति (Response Formatter)
    ====================================================== */
 
 (function (global) {
   "use strict";
 
-  /* ===============================
-     INTERNAL STATE
-     =============================== */
-  let isSpeaking = false;
-  let currentResponseId = 0;
-  let lastSpokenText = "";
+  if (global.ResponseEngine) return; // double-load safety
 
   /* ===============================
      INTERNAL HELPERS
      =============================== */
 
-  function hasTTS() {
-    return typeof window !== "undefined" &&
-           typeof window.speechSynthesis !== "undefined" &&
-           typeof window.SpeechSynthesisUtterance !== "undefined";
+  function safeText(val) {
+    if (typeof val !== "string") return "";
+    return val.replace(/\s+/g, " ").trim();
   }
 
-  function stopTTS() {
-    if (hasTTS()) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (e) {
-        console.warn("TTS cancel failed", e);
-      }
-    }
-    isSpeaking = false;
-    currentResponseId++;
-  }
-
-  function safeSpeak(text, onDone) {
-    if (!text || typeof text !== "string") {
-      onDone && onDone(false);
-      return;
-    }
-
-    if (!hasTTS()) {
-      console.warn("TTS not available");
-      onDone && onDone(false);
-      return;
-    }
-
-    stopTTS();
-
-    const rid = ++currentResponseId;
-    lastSpokenText = text;
-    isSpeaking = true;
-
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "hi-IN";
-    utter.rate = 0.75;
-    utter.pitch = 1.05;
-
-    utter.onend = () => {
-      if (rid !== currentResponseId) return;
-      isSpeaking = false;
-      onDone && onDone(true);
-    };
-
-    utter.onerror = () => {
-      if (rid !== currentResponseId) return;
-      isSpeaking = false;
-      onDone && onDone(false);
-    };
-
-    try {
-      window.speechSynthesis.speak(utter);
-    } catch (e) {
-      console.error("TTS speak failed", e);
-      isSpeaking = false;
-      onDone && onDone(false);
-    }
-  }
-
-  function formatClarification(options) {
+  function buildClarifyResponse(options) {
     if (!Array.isArray(options) || options.length === 0) {
-      return "क्या आप अपना प्रश्न थोड़ा स्पष्ट कर सकते हैं?";
+      return "क्या आप अपना प्रश्न थोड़ा और स्पष्ट कर सकते हैं?";
     }
     return (
       "क्या आप इनमें से किसी के बारे में पूछ रहे हैं: " +
-      options.join(" या ")
+      options.join(" या ") +
+      "?"
     );
+  }
+
+  function buildUnknownResponse() {
+    return "इस प्रश्न का उत्तर अभी मेरे पास उपलब्ध नहीं है।";
   }
 
   /* ===============================
@@ -98,59 +42,44 @@
   const ResponseEngine = {
 
     /**
-     * ThinkingEngine के आउटपुट पर प्रतिक्रिया
-     * @param {Object} result
+     * ThinkingEngine के आउटपुट को
+     * अंतिम उत्तर में बदले
+     * @param {Object|null} decision
+     * @returns {{text: string, meta?: Object}}
      */
-    respond(result) {
-      if (!result || typeof result !== "object") {
-        safeSpeak("मैं इस पर प्रतिक्रिया नहीं दे पा रही हूँ।");
-        return;
+    respond(decision) {
+      try {
+        if (!decision || typeof decision !== "object") {
+          return { text: buildUnknownResponse() };
+        }
+
+        // ambiguity case
+        if (decision.clarify === true) {
+          return {
+            text: buildClarifyResponse(decision.options || []),
+            meta: { type: "clarify" }
+          };
+        }
+
+        // normal answer
+        if (decision.text) {
+          return {
+            text: safeText(decision.text),
+            meta: {
+              type: "answer",
+              conceptId: decision.conceptId || null
+            }
+          };
+        }
+
+        return { text: buildUnknownResponse() };
+
+      } catch (e) {
+        console.error("ResponseEngine error:", e);
+        return {
+          text: "उत्तर तैयार करते समय एक समस्या आई।"
+        };
       }
-
-      // Interrupt protection (external commandBuffer)
-      if (global.CommandBuffer && CommandBuffer.isInterrupted?.()) {
-        return;
-      }
-
-      // Clarification case
-      if (result.clarify === true) {
-        const msg = formatClarification(result.options);
-        safeSpeak(msg);
-        return;
-      }
-
-      // Normal answer
-      if (typeof result.text === "string" && result.text.trim()) {
-        safeSpeak(result.text);
-        return;
-      }
-
-      // Fallback
-      safeSpeak("इस प्रश्न पर अभी मेरे पास स्पष्ट उत्तर नहीं है।");
-    },
-
-    /**
-     * किसी भी समय बोलना बंद करें
-     */
-    interrupt() {
-      stopTTS();
-    },
-
-    /**
-     * क्या अभी बोल रहा है?
-     */
-    isBusy() {
-      return isSpeaking;
-    },
-
-    /**
-     * Debug / Safety (read-only)
-     */
-    _debug() {
-      return {
-        isSpeaking,
-        lastSpokenText
-      };
     }
   };
 
