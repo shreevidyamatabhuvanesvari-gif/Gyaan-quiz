@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anjali • Conversation Test</title>
+
+<style>
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:system-ui,"Noto Sans Devanagari",sans-serif;
+  background:#fff3ea;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.card{
+  width:90%;
+  max-width:420px;
+  background:#ffffff;
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 12px 28px rgba(0,0,0,.15);
+  text-align:center;
+}
+h1{color:#8b2d2d;margin-bottom:6px}
+.status{
+  margin:10px 0;
+  padding:10px;
+  border-radius:12px;
+  background:#fff7f4;
+  border:1px solid #f3d4c7;
+  font-size:14px;
+}
+button{
+  border:none;
+  border-radius:14px;
+  padding:12px 18px;
+  font-size:15px;
+  cursor:pointer;
+  background:#a13f3f;
+  color:#fff;
+}
+</style>
+</head>
+
+<body>
+<main class="card">
+
+<h1>अंजली</h1>
+<div class="status" id="status">तैयार</div>
+
+<button id="talkBtn">🎤 बोलें</button>
+
+<!-- ========= CORE ========= -->
+<script src="core/AmbiguityResolver.js"></script>
+<script src="core/ThinkingEngine.js"></script>
+
+<!-- ========= LOAD ADMIN CONCEPTS ========= -->
+<script src="learning/AdminConceptLoader.js"></script>
+
+<!-- ========= VOICE ========= -->
+<script src="voice/tts.js"></script>
+<script src="voice/stt.js"></script>
+
+<script>
+/* ======================
+   BASIC TEST FLOW
+   ====================== */
+
+const status = document.getElementById("status");
+const btn = document.getElementById("talkBtn");
+
+btn.onclick = () => {
+  if (!window.AnjaliSTT) {
+    alert("STT उपलब्ध नहीं");
+    return;
+  }
+  status.innerText = "🎤 सुन रही हूँ…";
+  AnjaliSTT.startListening();
+};
+
+if (window.AnjaliSTT) {
+  AnjaliSTT.onText = function (text) {
+    status.innerText = "🧠 सोच रही हूँ…";
+
+    const result = ThinkingEngine.think(text);
+
+    if (result?.clarify) {
+      AnjaliTTS.speak("कृपया प्रश्न स्पष्ट करें।");
+      status.innerText = "स्पष्टीकरण";
+      return;
+    }
+
+    if (result?.text) {
+      AnjaliTTS.speak(result.text);
+      status.innerText = "उत्तर दिया गया";
+      return;
+    }
+
+    AnjaliTTS.speak("इस प्रश्न का उत्तर उपलब्ध नहीं है।");
+    status.innerText = "उत्तर नहीं मिला";
+  };
+}
+</script>
+
+</main>
+</body>
+</html>
