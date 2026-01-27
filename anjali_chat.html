@@ -36,8 +36,6 @@ body{
   flex-direction:column;
   overflow:hidden;
 }
-
-/* HEADER */
 .header{
   padding:14px 16px;
   background:linear-gradient(180deg,#c96a6a,#9e3b3b);
@@ -46,8 +44,6 @@ body{
 }
 .header b{font-size:18px}
 .header small{display:block;font-size:12px;opacity:.9}
-
-/* CHAT AREA */
 .chat{
   flex:1;
   padding:14px;
@@ -78,8 +74,6 @@ body{
   color:#777;
   margin:8px 0;
 }
-
-/* FOOTER */
 .footer{
   padding:12px;
   border-top:1px solid #eee;
@@ -104,31 +98,21 @@ body{
   color:var(--soft);
   border:1px dashed #e6b2b2;
 }
-
-/* SCROLLBAR (SOFT) */
-.chat::-webkit-scrollbar{width:6px}
-.chat::-webkit-scrollbar-thumb{
-  background:#e5c1c1;
-  border-radius:6px;
-}
 </style>
 </head>
 
 <body>
 <main class="chat-card">
 
-  <!-- HEADER -->
   <div class="header">
     <b>🌸 अंजली से बात करें</b>
     <small>ज्ञान • संवाद • समझ</small>
   </div>
 
-  <!-- CHAT MESSAGES -->
   <div class="chat" id="chatBox">
-    <div class="system">🎤 बातचीत शुरू करने के लिए “बोलें” दबाएँ</div>
+    <div class="system">🎤 “बोलें” दबाइए और प्रश्न पूछिए</div>
   </div>
 
-  <!-- FOOTER CONTROLS -->
   <div class="footer">
     <div class="controls">
       <button class="btn" id="listenBtn">🎤 बोलें</button>
@@ -138,76 +122,87 @@ body{
 
 </main>
 
+<!-- ================= CORE ================= -->
+<script src="core/AmbiguityResolver.js"></script>
+<script src="core/ThinkingEngine.js"></script>
+<script src="core/AnjaliCore.js"></script>
+<script src="core/ContextMemory.js"></script>
+
+<!-- ================= LEARNING ================= -->
+<script src="learning/AdminConceptLoader.js"></script>
+<script src="learning/ConceptBridge.js"></script>
+<script src="learning/KnowledgeReader.js"></script>
+<script src="learning/KnowledgeBase.js"></script>
+<script src="learning/ExperienceMemory.js"></script>
+
+<!-- ================= ANSWER ================= -->
+<script src="answer/KnowledgeAnswerEngine.js"></script>
+<script src="answer/ResponseEngine.js"></script>
+
+<!-- ================= VOICE ================= -->
+<script src="voice/tts.js"></script>
+<script src="voice/commandBuffer.js"></script>
+<script src="voice/stt.js"></script>
+
 <script>
-/* ===============================
-   UI HELPERS
-   =============================== */
+/* ================= UI HELPERS ================= */
 const chatBox = document.getElementById("chatBox");
 
-function addMessage(text, who){
-  const div = document.createElement("div");
-  div.className = "msg " + who;
-  div.innerText = text;
-  chatBox.appendChild(div);
+function addMsg(text, who){
+  const d = document.createElement("div");
+  d.className = "msg " + who;
+  d.innerText = text;
+  chatBox.appendChild(d);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+function addSys(text){
+  const d = document.createElement("div");
+  d.className = "system";
+  d.innerText = text;
+  chatBox.appendChild(d);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-function addSystem(text){
-  const div = document.createElement("div");
-  div.className = "system";
-  div.innerText = text;
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+/* ================= NAV ================= */
+backBtn.onclick = () => location.href="index.html";
 
-/* ===============================
-   NAVIGATION
-   =============================== */
-document.getElementById("backBtn").onclick = () => {
-  location.href = "index.html";
-};
-
-/* ===============================
-   CONVERSATION FLOW (SAFE)
-   =============================== */
-document.getElementById("listenBtn").onclick = () => {
+/* ================= CHAT START ================= */
+listenBtn.onclick = () => {
 
   if (!window.AnjaliSTT) {
-    addSystem("❌ Listening engine उपलब्ध नहीं है");
+    addSys("❌ STT उपलब्ध नहीं है");
     return;
   }
 
-  addSystem("🎤 सुन रही हूँ…");
+  addSys("🎤 सुन रही हूँ…");
 
-  // Hook once (safe)
-  if (!AnjaliSTT._chatHooked) {
-    AnjaliSTT._chatHooked = true;
+  if (!AnjaliSTT._chatBound) {
+    AnjaliSTT._chatBound = true;
 
     AnjaliSTT.onText = function(userText){
-      addMessage(userText, "user");
+      addMsg(userText, "user");
 
       if (!window.ThinkingEngine) {
-        addMessage("मेरा सोच इंजन अभी उपलब्ध नहीं है।", "anjali");
+        addMsg("सोच इंजन उपलब्ध नहीं है।", "anjali");
         return;
       }
 
       const result = ThinkingEngine.think(userText);
 
       if (result?.clarify) {
-        addMessage("कृपया प्रश्न थोड़ा और स्पष्ट करें।", "anjali");
+        addMsg("कृपया प्रश्न स्पष्ट करें।", "anjali");
         return;
       }
 
       if (result?.text) {
-        addMessage(result.text, "anjali");
-
+        addMsg(result.text, "anjali");
         if (window.AnjaliTTS) {
           AnjaliTTS.speak(result.text);
         }
         return;
       }
 
-      addMessage("इस प्रश्न का उत्तर अभी मेरे पास नहीं है।", "anjali");
+      addMsg("इस प्रश्न का उत्तर अभी मेरे पास नहीं है।", "anjali");
     };
   }
 
