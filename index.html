@@ -93,31 +93,31 @@ body{
 
 <div class="footer">Core-Stable • Voice-Controlled • Quiz-Synced</div>
 
-<!-- =================================================
-     ✅ SCRIPT LOADING ORDER (FINAL & FUTURE-SAFE)
-     ================================================= -->
-
-<!-- 1️⃣ CORE UTILITIES (no dependency) -->
+<!-- 1️⃣ CORE UTILITIES (कोई dependency नहीं) -->
 <script src="core/AmbiguityResolver.js"></script>
 
-<!-- 2️⃣ BRAIN -->
+<!-- 2️⃣ BRAIN (मुख्य सोच इंजन) -->
 <script src="core/ThinkingEngine.js"></script>
 <script src="core/ContextMemory.js"></script>
 
-<!-- 3️⃣ LEARNING (depends on brain) -->
+<!-- 3️⃣ LEARNING / KNOWLEDGE LAYER (Brain पर निर्भर) -->
 <script src="learning/KnowledgeReader.js"></script>
 <script src="learning/KnowledgeBase.js"></script>
 <script src="learning/ExperienceMemory.js"></script>
 
-<!-- 4️⃣ VOICE OUTPUT (independent) -->
+<!-- 4️⃣ ANSWER COMPOSITION (Brain + KnowledgeReader पर निर्भर) -->
+<script src="answer/KnowledgeAnswerEngine.js"></script>
+
+<!-- 5️⃣ VOICE OUTPUT (स्वतंत्र) -->
 <script src="voice/tts.js"></script>
 
-<!-- 5️⃣ MICRO COMMAND PRIORITY BUFFER -->
+<!-- 6️⃣ MICRO COMMAND PRIORITY BUFFER -->
 <script src="voice/commandBuffer.js"></script>
 
-<!-- 6️⃣ VOICE INPUT (uses buffer + brain) -->
+<!-- 7️⃣ VOICE INPUT (STT → Buffer → Brain) -->
 <script src="voice/stt.js"></script>
-  <!-- ================= MAIN ORCHESTRATOR ================= -->
+
+<!-- 8️⃣ MAIN ORCHESTRATOR (सबसे अंत में) -->
 <script src="main.js"></script>
 <!-- =================================================
      UI + QUIZ + CONVERSATION + LEARNING (INDEX ONLY)
