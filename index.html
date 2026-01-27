@@ -44,28 +44,6 @@ body{
   background:#fff;color:var(--soft);
   border:1px dashed #e6b2b2;
 }
-
-/* ===== QUIZ ===== */
-.quiz-box{
-  margin-top:14px;
-  padding:14px;
-  border-radius:16px;
-  background:#fff7f4;
-  border:1px solid #f3d4c7;
-  display:none;
-}
-.quiz-q{font-weight:bold;margin-bottom:8px}
-.quiz-a{
-  margin-top:10px;
-  padding:8px;
-  background:#fff;
-  border-radius:10px;
-  color:#333;
-  display:none;
-}
-.quiz-timer{
-  font-size:22px;font-weight:bold;color:#a13f3f;
-}
 .footer{font-size:11px;color:#777;margin-top:12px}
 </style>
 </head>
@@ -79,76 +57,65 @@ body{
 <div class="status" id="appStatus">अंजली तैयार है</div>
 
 <div class="actions">
-  <button class="btn" id="startBtn">शुरू करें</button>
-  <button class="btn" id="talkBtn">💬 बात करें</button>
+  <button class="btn" id="startBtn">🎤 बात करें</button>
   <button class="btn" id="quizBtn">🧠 Quiz</button>
   <button class="btn secondary" id="adminBtn">🔐 Admin</button>
 </div>
 
-<div class="quiz-box" id="quizBox">
-  <div class="quiz-q" id="quizQ"></div>
-  <div>⏳ समय शेष</div>
-  <div class="quiz-timer" id="quizTimer">5</div>
-  <div class="quiz-a" id="quizA"></div>
-</div>
+<div class="footer">Core-Stable • Conversation Enabled</div>
 
-<div class="footer">Core-Stable • Voice-Controlled • Quiz-Synced</div>
+<!-- =================================================
+     ✅ SCRIPT ORDER (CRITICAL)
+     ================================================= -->
 
-<!-- ================= CORE ================= -->
+<!-- 1️⃣ CORE BRAIN -->
 <script src="core/AmbiguityResolver.js"></script>
 <script src="core/ThinkingEngine.js"></script>
 
-<!-- 👇 अब Brain मौजूद है, अब concepts लोड होंगे -->
-<script src="core/AnjaliCore.js"></script>
+<!-- 2️⃣ CONCEPT LOADER (सबसे ज़रूरी) -->
 <script src="learning/AdminConceptLoader.js"></script>
 
+<!-- 3️⃣ MEMORY -->
 <script src="core/ContextMemory.js"></script>
 
-<!-- ================= LEARNING ================= -->
-<script src="learning/KnowledgeReader.js"></script>
+<!-- 4️⃣ KNOWLEDGE -->
 <script src="learning/KnowledgeBase.js"></script>
+<script src="learning/KnowledgeReader.js"></script>
 <script src="learning/ExperienceMemory.js"></script>
 
-<!-- ================= ANSWER ================= -->
+<!-- 5️⃣ ANSWER -->
 <script src="answer/KnowledgeAnswerEngine.js"></script>
 <script src="answer/ResponseEngine.js"></script>
 
-<!-- ================= VOICE ================= -->
+<!-- 6️⃣ VOICE -->
 <script src="voice/tts.js"></script>
 <script src="voice/commandBuffer.js"></script>
 <script src="voice/stt.js"></script>
 
-<!-- ================= MAIN ================= -->
+<!-- 7️⃣ MAIN ORCHESTRATOR -->
 <script src="main.js"></script>
 
+<!-- =================================================
+     🎤 CONVERSATION WIRING (MINIMAL & FINAL)
+     ================================================= -->
 <script>
-/* ================= BASIC NAV ================= */
+/* ===== NAV ===== */
 adminBtn.onclick = () => location.href = "admin.html";
 
-/* 👉 नया पैनल: अंजली से बात करें */
-talkBtn.onclick = () => {
-  location.href = "anjali_chat.html";
-};
-
-/* ================= MODE ================= */
-let APP_MODE = "idle";
-
-/* ================= START (LISTEN ONLY) ================= */
+/* ===== START TALKING ===== */
 startBtn.onclick = () => {
-  if (!window.AnjaliSTT) {
-    alert("Listening engine उपलब्ध नहीं है");
+  if (!window.AnjaliSTT || !window.ThinkingEngine) {
+    alert("Voice system उपलब्ध नहीं है");
     return;
   }
-  stopQuiz();
-  APP_MODE = "conversation";
   appStatus.innerText = "🎤 सुन रही हूँ…";
   AnjaliSTT.startListening();
 };
 
-/* ================= CONVERSATION FLOW ================= */
+/* ===== STT → THINK → SPEAK ===== */
 if (window.AnjaliSTT) {
-  AnjaliSTT.onText = function (userText) {
-    if (APP_MODE !== "conversation") return;
+  AnjaliSTT.onText = function(userText){
+    if (!userText) return;
 
     const result = ThinkingEngine.think(userText);
 
@@ -158,84 +125,12 @@ if (window.AnjaliSTT) {
     }
 
     if (result?.text) {
-      AnjaliTTS.speak(result.text, {}, () => {
-        if (window.ExperienceMemory) {
-          ExperienceMemory.recordConversation(userText, result.text);
-        }
-      });
+      AnjaliTTS.speak(result.text);
       return;
     }
 
     AnjaliTTS.speak("इस प्रश्न का उत्तर अभी मेरे पास नहीं है।");
   };
-}
-
-/* ================= QUIZ (UNCHANGED) ================= */
-const QUIZ_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
-let quizData=[], quizIndex=0, timerRef=null;
-
-quizBtn.onclick = ()=>{
-  if (APP_MODE === "conversation" && window.AnjaliSTT) {
-    AnjaliSTT.stopListening();
-  }
-
-  APP_MODE="quiz";
-  speechSynthesis.cancel();
-  clearInterval(timerRef);
-
-  quizData = JSON.parse(localStorage.getItem(QUIZ_KEY)||"[]");
-  if(!quizData.length){
-    alert("Quiz के लिए कोई प्रश्न नहीं है");
-    APP_MODE="idle";
-    return;
-  }
-
-  quizIndex=0;
-  quizBox.style.display="block";
-  appStatus.innerText="🧠 Quiz चल रहा है…";
-  askQuestion();
-};
-
-function askQuestion(){
-  if(quizIndex>=quizData.length){
-    stopQuiz();
-    appStatus.innerText="Quiz पूर्ण हुआ";
-    return;
-  }
-  const {q,a}=quizData[quizIndex];
-  quizQ.innerText="❓ "+q;
-  quizA.style.display="none";
-  AnjaliTTS.speak(q,{},startTimer);
-}
-
-function startTimer(){
-  let t=5;
-  quizTimer.innerText=t;
-  clearInterval(timerRef);
-  timerRef=setInterval(()=>{
-    t--;
-    quizTimer.innerText=t;
-    if(t<=0){
-      clearInterval(timerRef);
-      revealAnswer();
-    }
-  },1000);
-}
-
-function revealAnswer(){
-  const a=quizData[quizIndex].a;
-  quizA.innerText="✅ उत्तर: "+a;
-  quizA.style.display="block";
-  AnjaliTTS.speak(a,{},()=>{
-    quizIndex++;
-    askQuestion();
-  });
-}
-
-function stopQuiz(){
-  clearInterval(timerRef);
-  quizBox.style.display="none";
-  APP_MODE="idle";
 }
 </script>
 
