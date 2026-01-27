@@ -80,6 +80,7 @@ body{
 
 <div class="actions">
   <button class="btn" id="startBtn">शुरू करें</button>
+  <button class="btn" id="talkBtn">💬 बात करें</button>
   <button class="btn" id="quizBtn">🧠 Quiz</button>
   <button class="btn secondary" id="adminBtn">🔐 Admin</button>
 </div>
@@ -93,36 +94,41 @@ body{
 
 <div class="footer">Core-Stable • Voice-Controlled • Quiz-Synced</div>
 
-<!-- CORE -->
+<!-- ================= CORE ================= -->
 <script src="core/AmbiguityResolver.js"></script>
 <script src="core/ThinkingEngine.js"></script>
 <script src="core/ContextMemory.js"></script>
 
-<!-- LEARNING -->
+<!-- ================= LEARNING ================= -->
 <script src="learning/KnowledgeReader.js"></script>
 <script src="learning/KnowledgeBase.js"></script>
 <script src="learning/ExperienceMemory.js"></script>
 
-<!-- ANSWER -->
+<!-- ================= ANSWER ================= -->
 <script src="answer/KnowledgeAnswerEngine.js"></script>
 <script src="answer/ResponseEngine.js"></script>
 
-<!-- VOICE -->
+<!-- ================= VOICE ================= -->
 <script src="voice/tts.js"></script>
 <script src="voice/commandBuffer.js"></script>
 <script src="voice/stt.js"></script>
 
-<!-- MAIN -->
+<!-- ================= MAIN ================= -->
 <script src="main.js"></script>
 
 <script>
-/* ================= BASIC ================= */
+/* ================= BASIC NAV ================= */
 adminBtn.onclick = () => location.href = "admin.html";
+
+/* 👉 नया पैनल: अंजली से बात करें */
+talkBtn.onclick = () => {
+  location.href = "anjali_chat.html";
+};
 
 /* ================= MODE ================= */
 let APP_MODE = "idle";
 
-/* ================= START CONVERSATION ================= */
+/* ================= START (LISTEN ONLY) ================= */
 startBtn.onclick = () => {
   if (!window.AnjaliSTT) {
     alert("Listening engine उपलब्ध नहीं है");
@@ -194,7 +200,6 @@ function askQuestion(){
   const {q,a}=quizData[quizIndex];
   quizQ.innerText="❓ "+q;
   quizA.style.display="none";
-
   AnjaliTTS.speak(q,{},startTimer);
 }
 
@@ -216,7 +221,6 @@ function revealAnswer(){
   const a=quizData[quizIndex].a;
   quizA.innerText="✅ उत्तर: "+a;
   quizA.style.display="block";
-
   AnjaliTTS.speak(a,{},()=>{
     quizIndex++;
     askQuestion();
