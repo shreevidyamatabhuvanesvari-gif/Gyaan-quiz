@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>अंजली से बात करें</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui,"Noto Sans Devanagari",sans-serif;
+  background:#fff3ea;
+}
+.container{
+  max-width:520px;
+  margin:auto;
+  padding:16px;
+}
+h1{
+  text-align:center;
+  color:#8b2d2d;
+}
+.status{
+  background:#fff;
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
+  margin-bottom:12px;
+  border:1px solid #e6b2b2;
+}
+.chat{
+  background:#fff;
+  border-radius:14px;
+  padding:12px;
+  min-height:280px;
+  max-height:50vh;
+  overflow:auto;
+  border:1px solid #f3d4c7;
+}
+.msg{
+  margin-bottom:10px;
+}
+.user{ color:#333; }
+.bot{ color:#8b2d2d; }
+
+.actions{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+}
+button{
+  flex:1;
+  border:none;
+  border-radius:14px;
+  padding:12px;
+  font-size:15px;
+  cursor:pointer;
+  background:#a13f3f;
+  color:#fff;
+}
+button.secondary{
+  background:#fff;
+  color:#8b2d2d;
+  border:1px dashed #e6b2b2;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>🌸 अंजली से बात करें</h1>
+
+<div class="status" id="status">तैयार</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="actions">
+  <button id="listenBtn">🎤 बोलें</button>
+  <button class="secondary" onclick="goBack()">⬅ वापस</button>
+</div>
+
+</div>
+
+<!-- ========== CORE / BRAIN ========== -->
+<script src="core/AmbiguityResolver.js"></script>
+<script src="core/ThinkingEngine.js"></script>
+<script src="core/ContextMemory.js"></script>
+
+<!-- ========== LEARNING / KNOWLEDGE ========== -->
+<script src="learning/KnowledgeReader.js"></script>
+<script src="learning/KnowledgeBase.js"></script>
+<script src="learning/ExperienceMemory.js"></script>
+
+<!-- ========== ANSWER ========== -->
+<script src="answer/KnowledgeAnswerEngine.js"></script>
+<script src="answer/ResponseEngine.js"></script>
+
+<!-- ========== VOICE ========== -->
+<script src="voice/tts.js"></script>
+<script src="voice/commandBuffer.js"></script>
+<script src="voice/stt.js"></script>
+
+<script>
+/* ===============================
+   UI HELPERS
+   =============================== */
+const chat = document.getElementById("chat");
+const status = document.getElementById("status");
+
+function addMsg(text, cls){
+  const div=document.createElement("div");
+  div.className="msg "+cls;
+  div.innerText=text;
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+/* ===============================
+   NAV
+   =============================== */
+function goBack(){
+  window.location.href="index.html";
+}
+
+/* ===============================
+   START LISTEN
+   =============================== */
+listenBtn.onclick = ()=>{
+  if(!window.AnjaliSTT){
+    alert("Listening engine उपलब्ध नहीं है");
+    return;
+  }
+  status.innerText="🎤 सुन रही हूँ…";
+  AnjaliSTT.startListening();
+};
+
+/* ===============================
+   STT → THINK → SPEAK
+   =============================== */
+if(window.AnjaliSTT){
+  AnjaliSTT.onText = function(userText){
+    if(!userText) return;
+
+    addMsg("आप: "+userText,"user");
+
+    const result = ThinkingEngine.think(userText);
+
+    if(result?.clarify){
+      AnjaliTTS.speak("कृपया प्रश्न थोड़ा और स्पष्ट करें।");
+      addMsg("अंजली: कृपया प्रश्न स्पष्ट करें","bot");
+      return;
+    }
+
+    if(result?.text){
+      addMsg("अंजली: "+result.text,"bot");
+
+      AnjaliTTS.speak(result.text,{},()=>{
+        if(window.ContextMemory){
+          ContextMemory.add(userText,result.text);
+        }
+        if(window.ExperienceMemory){
+          ExperienceMemory.recordConversation(userText,result.text);
+        }
+      });
+      return;
+    }
+
+    addMsg("अंजली: इस प्रश्न का उत्तर अभी मेरे पास नहीं है।","bot");
+    AnjaliTTS.speak("इस प्रश्न का उत्तर अभी मेरे पास नहीं है।");
+  };
+}
+</script>
+
+</body>
+  </html>
