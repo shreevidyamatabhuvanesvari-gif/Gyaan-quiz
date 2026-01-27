@@ -1,9 +1,10 @@
 /* ======================================================
    AdminConceptLoader.js
    PURPOSE:
-   - Load Admin questions
-   - Convert them into ThinkingEngine concepts
-   - One-time safe sync
+   - Admin में सेव प्रश्नों को ThinkingEngine के concepts में लोड करना
+   - कोई सीखना नहीं
+   - कोई UI नहीं
+   - कोई अन्य एप प्रभावित नहीं
    ====================================================== */
 
 (function () {
@@ -11,31 +12,25 @@
 
   const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
 
-  if (!window.ThinkingEngine) return;
+  if (!window.ThinkingEngine || !window.KnowledgeReader) return;
 
-  let adminData;
+  let raw;
   try {
-    adminData = JSON.parse(localStorage.getItem(ADMIN_KEY)) || [];
+    raw = JSON.parse(localStorage.getItem(ADMIN_KEY)) || [];
   } catch {
-    adminData = [];
+    raw = [];
   }
 
-  if (!Array.isArray(adminData) || adminData.length === 0) return;
+  if (!Array.isArray(raw)) return;
 
-  adminData.forEach(item => {
+  raw.forEach(item => {
     if (!item.id || !item.q || !item.a) return;
 
-    // signals = प्रश्न के शब्द
-    const signals = item.q
-      .toLowerCase()
-      .replace(/[^\u0900-\u097F\s]/g, "")
-      .split(/\s+/)
-      .filter(Boolean);
-
+    // पहले से जोड़ा हो तो दोबारा नहीं
     ThinkingEngine.addConcept(
       item.id,
-      signals,
-      () => item.a
+      item.q.split(/\s+/), // signals
+      () => item.a         // responder
     );
   });
 
