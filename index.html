@@ -89,6 +89,49 @@ body{
 <!-- ================= MAIN ================= -->
 <script src="main.js"></script>
 
+  <script>
+/* ===============================
+   🔍 THINKING ENGINE DIAGNOSTIC
+   =============================== */
+
+(function () {
+  function runDiagnostic() {
+    if (!window.ThinkingEngine) {
+      alert("❌ ThinkingEngine लोड नहीं हुआ");
+      return;
+    }
+
+    try {
+      // private memory तक सीधे पहुंच नहीं है,
+      // इसलिए test-think से पता लगाएंगे
+      const test = ThinkingEngine.think("परीक्षण प्रश्न");
+
+      if (test && test.text) {
+        alert(
+          "✅ ThinkingEngine सक्रिय है\n" +
+          "उत्तर मिला: " + test.text
+        );
+      } else if (test && test.clarify) {
+        alert(
+          "⚠️ ThinkingEngine ambiguity मोड में है\n" +
+          "लेकिन concepts मौजूद हैं"
+        );
+      } else {
+        alert(
+          "❌ ThinkingEngine के पास कोई concept नहीं है\n" +
+          "(Admin → Concept load विफल)"
+        );
+      }
+    } catch (e) {
+      alert("❌ Diagnostic Error: " + e.message);
+    }
+  }
+
+  // Page load के 1 सेकंड बाद चलाएं
+  setTimeout(runDiagnostic, 1000);
+})();
+  </script>
+
 <script>
 /* ================= NAV ================= */
 adminBtn.onclick = () => location.href = "admin.html";
