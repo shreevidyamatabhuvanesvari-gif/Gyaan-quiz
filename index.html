@@ -3,180 +3,137 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>अंजली</title>
+<title>Gyaan-Quiz • ज्ञान आधारित प्रश्नोत्तरी</title>
 
 <style>
 :root{
-  --bg1:#fff3ea;--bg2:#ffe1cf;--accent:#8b2d2d;
-  --soft:#b35c5c;--card:#ffffff;
+  --bg1:#fdf4ec;
+  --bg2:#fde2cf;
+  --accent:#7a1f1f;
+  --soft:#b85c5c;
+  --card:#ffffff;
 }
 *{box-sizing:border-box}
 body{
-  margin:0;min-height:100vh;
+  margin:0;
+  min-height:100vh;
   font-family:system-ui,"Noto Sans Devanagari",sans-serif;
   background:linear-gradient(135deg,var(--bg1),var(--bg2));
-  display:flex;align-items:center;justify-content:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .card{
-  width:94%;max-width:440px;background:var(--card);
-  border-radius:22px;padding:20px;
-  box-shadow:0 14px 30px rgba(0,0,0,.12);
+  width:94%;
+  max-width:420px;
+  background:var(--card);
+  border-radius:24px;
+  padding:24px 20px 26px;
+  box-shadow:0 18px 40px rgba(0,0,0,.14);
   text-align:center;
 }
-.title{font-size:26px;color:var(--accent)}
-.subtitle{font-size:14px;color:#555;margin-bottom:12px}
-.status{
-  background:#fff7f4;border:1px solid #f3d4c7;
-  border-radius:14px;padding:10px;font-size:13px;
-  margin:8px 0;color:#6b2c2c;
+.logo{
+  font-size:30px;
+  color:var(--accent);
+  font-weight:700;
 }
-.actions{
-  display:flex;gap:10px;justify-content:center;
-  flex-wrap:wrap;margin-top:12px;
+.subtitle{
+  font-size:14px;
+  color:#555;
+  margin-top:4px;
+  margin-bottom:18px;
+}
+.status{
+  background:#fff7f2;
+  border:1px solid #f1d2c2;
+  border-radius:14px;
+  padding:10px;
+  font-size:13px;
+  color:#6b2c2c;
+  margin-bottom:18px;
+}
+.menu{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:12px;
 }
 .btn{
-  border:none;border-radius:16px;
-  padding:12px 16px;font-size:14px;cursor:pointer;
-  background:linear-gradient(180deg,#c96a6a,#a13f3f);
+  border:none;
+  border-radius:18px;
+  padding:14px 16px;
+  font-size:15px;
+  cursor:pointer;
+  background:linear-gradient(180deg,#c96a6a,#9e3b3b);
   color:#fff;
+  transition:.15s ease;
 }
+.btn:hover{transform:translateY(-1px)}
 .btn.secondary{
-  background:#fff;color:var(--soft);
+  background:#fff;
+  color:var(--soft);
   border:1px dashed #e6b2b2;
 }
-.footer{font-size:11px;color:#777;margin-top:14px}
+.footer{
+  margin-top:18px;
+  font-size:11px;
+  color:#777;
+}
 </style>
 </head>
 
 <body>
 <main class="card">
 
-<div class="title">अंजली</div>
-<div class="subtitle">स्नेहपूर्ण • समझदार • मर्यादित</div>
+  <div class="logo">Gyaan-Quiz</div>
+  <div class="subtitle">ज्ञान • प्रश्न • अभ्यास</div>
 
-<div class="status" id="appStatus">अंजली तैयार है</div>
+  <div class="status">
+    📘 ज्ञान आधारित अध्ययन प्रणाली
+  </div>
 
-<div class="actions">
-  <button class="btn" id="startBtn">शुरू करें</button>
-  <button class="btn" id="talkBtn">💬 बात करें</button>
-  <button class="btn" id="quizBtn">🧠 Quiz</button>
-  <button class="btn secondary" id="adminBtn">🔐 Admin</button>
-</div>
+  <div class="menu">
+    <!-- 1️⃣ CHAT -->
+    <button class="btn" onclick="goChat()">💬 अंजली से बात करें</button>
 
-<div class="footer">Core-Stable • Voice-Enabled</div>
+    <!-- 2️⃣ QUIZ -->
+    <button class="btn" onclick="goQuiz()">🧠 Quiz</button>
 
-<!-- ================= CORE ================= -->
-<script src="core/AmbiguityResolver.js"></script>
-<script src="core/ThinkingEngine.js"></script>
+    <!-- 3️⃣ TEST CONVERSATION -->
+    <button class="btn secondary" onclick="goTest()">🧪 Test Conversation</button>
 
-<!-- 🔑 FINAL & ONLY CONCEPT SOURCE -->
-<script src="learning/ConceptBridge.js"></script>
+    <!-- 4️⃣ ADMIN -->
+    <button class="btn secondary" onclick="goAdmin()">🔐 Admin Panel</button>
+  </div>
 
-<script src="core/ContextMemory.js"></script>
-
-<!-- ================= LEARNING ================= -->
-<script src="learning/KnowledgeReader.js"></script>
-<script src="learning/KnowledgeBase.js"></script>
-<script src="learning/ExperienceMemory.js"></script>
-
-<!-- ================= ANSWER ================= -->
-<script src="answer/KnowledgeAnswerEngine.js"></script>
-<script src="answer/ResponseEngine.js"></script>
-
-<!-- ================= VOICE ================= -->
-<script src="voice/tts.js"></script>
-<script src="voice/commandBuffer.js"></script>
-<script src="voice/stt.js"></script>
-
-<!-- ================= MAIN ================= -->
-<script src="main.js"></script>
-  
-  <script>
-/* ===============================
-   🔍 THINKING ENGINE DIAGNOSTIC
-   =============================== */
-
-(function () {
-  function runDiagnostic() {
-    if (!window.ThinkingEngine) {
-      alert("❌ ThinkingEngine लोड नहीं हुआ");
-      return;
-    }
-
-    try {
-      // private memory तक सीधे पहुंच नहीं है,
-      // इसलिए test-think से पता लगाएंगे
-      const test = ThinkingEngine.think("परीक्षण प्रश्न");
-
-      if (test && test.text) {
-        alert(
-          "✅ ThinkingEngine सक्रिय है\n" +
-          "उत्तर मिला: " + test.text
-        );
-      } else if (test && test.clarify) {
-        alert(
-          "⚠️ ThinkingEngine ambiguity मोड में है\n" +
-          "लेकिन concepts मौजूद हैं"
-        );
-      } else {
-        alert(
-          "❌ ThinkingEngine के पास कोई concept नहीं है\n" +
-          "(Admin → Concept load विफल)"
-        );
-      }
-    } catch (e) {
-      alert("❌ Diagnostic Error: " + e.message);
-    }
-  }
-
-  // Page load के 1 सेकंड बाद चलाएं
-  setTimeout(runDiagnostic, 1000);
-})();
-  </script>
-
-<script>
-/* ================= NAV ================= */
-adminBtn.onclick = () => location.href = "admin.html";
-talkBtn.onclick  = () => location.href = "anjali_chat.html";
-
-/* ================= TTS UNLOCK FIX ================= */
-let TTS_UNLOCKED = false;
-
-function unlockTTSOnce(callback){
-  if (TTS_UNLOCKED) {
-    callback && callback();
-    return;
-  }
-
-  if (!window.AnjaliTTS) {
-    callback && callback();
-    return;
-  }
-
-  AnjaliTTS.speak("मैं तैयार हूँ", {}, () => {
-    TTS_UNLOCKED = true;
-    callback && callback();
-  });
-}
-
-/* ================= START CONVERSATION ================= */
-startBtn.onclick = () => {
-  unlockTTSOnce(() => {
-    appStatus.innerText = "🎤 सुन रही हूँ…";
-    if (window.AnjaliSTT) {
-      AnjaliSTT.startListening();
-    }
-  });
-};
-
-/* ================= QUIZ SAFE ================= */
-quizBtn.onclick = () => {
-  unlockTTSOnce(() => {
-    alert("Quiz मोड सक्रिय किया जा सकता है");
-  });
-};
-</script>
+  <div class="footer">
+    Stable UI • Brain-Safe • No Auto-Logic
+  </div>
 
 </main>
+
+<script>
+/* ======================
+   SAFE NAVIGATION ONLY
+   ====================== */
+
+function goChat(){
+  location.href = "anjali_chat.html";
+}
+
+function goQuiz(){
+  location.href = "quiz.html"; 
+  // या यदि quiz index में ही है तो:
+  // location.href = "index_quiz.html";
+}
+
+function goTest(){
+  location.href = "test_conversation.html";
+}
+
+function goAdmin(){
+  location.href = "admin.html";
+}
+</script>
+
 </body>
 </html>
