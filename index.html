@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>अंजली</title>
+<title>अंजली • Diagnostic</title>
 
 <style>
 :root{
@@ -52,34 +52,47 @@ body{
 <main class="card">
 
 <div class="title">अंजली</div>
-<div class="subtitle">स्नेहपूर्ण • समझदार • मर्यादित</div>
+<div class="subtitle">Conversation Diagnostic Mode</div>
 
-<div class="status">
-  🧪 Conversation Diagnostic Mode
+<div class="status" id="statusBox">
+  🧪 TTS / STT Unlock Test
 </div>
 
 <div class="actions">
-  <button onclick="AnjaliTTS.speak('मैं बोल सकती हूँ')">TTS Test</button>
+  <button class="btn" id="ttsTestBtn">🔊 TTS Test</button>
   <button class="btn" id="talkTestBtn">🎤 बातचीत टेस्ट</button>
   <button class="btn secondary" id="adminBtn">🔐 Admin</button>
 </div>
 
 <div class="footer">
-  Safe Navigation • No Brain Changes
+  Safe • Isolated • No Brain Changes
 </div>
 
-<script>
-/* ======================
-   SAFE NAVIGATION ONLY
-   ====================== */
+<!-- ========= TTS ONLY ========= -->
+<script src="voice/tts.js"></script>
 
-document.getElementById("adminBtn").onclick = () => {
+<script>
+/* ===============================
+   SAFE NAVIGATION
+   =============================== */
+adminBtn.onclick = () => {
   location.href = "admin.html";
 };
 
-/* 👉 यही बटन test_conversation.html पर ले जाएगा */
-document.getElementById("talkTestBtn").onclick = () => {
+talkTestBtn.onclick = () => {
   location.href = "test_conversation.html";
+};
+
+/* ===============================
+   🔓 TTS UNLOCK FIX (CRITICAL)
+   =============================== */
+ttsTestBtn.onclick = () => {
+
+  // 🔓 browser unlock
+  AnjaliTTS.speak("मैं बोल सकती हूँ");
+  speechSynthesis.cancel();
+
+  statusBox.innerText = "✅ TTS unlocked (अब इंडेक्स से भी बोलेगी)";
 };
 </script>
 
