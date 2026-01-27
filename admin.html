@@ -68,7 +68,7 @@
       border:1px solid #ccc;
       resize:vertical;
     }
-    .big{ min-height:160px; }
+    .big{ min-height:140px; }
     .actions{
       margin-top:10px;
       display:flex;
@@ -103,12 +103,6 @@
     }
     .edit{ background:#2563eb; color:#fff; }
     .delete{ background:#dc2626; color:#fff; }
-    footer{
-      text-align:center;
-      font-size:12px;
-      color:#555;
-      margin-top:10px;
-    }
   </style>
 </head>
 
@@ -121,23 +115,23 @@
 
 <main>
 
-  <!-- ========= FORM PANEL ========= -->
+  <!-- FORM -->
   <section class="panel form-panel">
     <h2 id="formTitle">➕ नया प्रश्न जोड़ें</h2>
 
     <label>प्रश्न</label>
-    <textarea id="q" placeholder="यहाँ प्रश्न लिखें..."></textarea>
+    <textarea id="q"></textarea>
 
-    <label>उत्तर / लेख (हर पंक्ति नई पंक्ति में)</label>
-    <textarea id="a" class="big" placeholder="यहाँ उत्तर लिखें..."></textarea>
+    <label>उत्तर</label>
+    <textarea id="a" class="big"></textarea>
 
     <div class="actions">
       <button onclick="saveItem()">💾 Save</button>
-      <button class="secondary" onclick="cancelEdit()">❌ Cancel Edit</button>
+      <button class="secondary" onclick="cancelEdit()">❌ Cancel</button>
     </div>
   </section>
 
-  <!-- ========= LIST PANEL ========= -->
+  <!-- LIST -->
   <section class="panel list-panel">
     <h3>📚 सभी प्रश्न</h3>
     <div id="list"></div>
@@ -145,118 +139,127 @@
 
 </main>
 
-<footer>
-  Core-Safe • One-by-One Edit/Delete • No Mass Clear
-</footer>
-
-<!-- =================================================
-     CORE & LEARNING SCRIPTS (ORDER MATTERS)
-     ================================================= -->
-
+<!-- CORE (Safe include) -->
 <script src="core/AmbiguityResolver.js"></script>
 <script src="core/ThinkingEngine.js"></script>
-<script src="core/ContextMemory.js"></script>
 
-<script src="learning/KnowledgeBase.js"></script>
-<script src="learning/ExperienceMemory.js"></script>
-
-<script src="answer/KnowledgeAnswerEngine.js"></script>
-
-<!-- =================================================
-     ADMIN LOGIC (ISOLATED & SAFE)
-     ================================================= -->
 <script>
-  const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
-  let data = JSON.parse(localStorage.getItem(ADMIN_KEY)) || [];
-  let editId = null;
+/* ===============================
+   ADMIN STORE
+   =============================== */
+const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
+let data = JSON.parse(localStorage.getItem(ADMIN_KEY)) || [];
+let editId = null;
 
-  function goIndex(){
-    window.location.href = "index.html";
+function goIndex(){
+  location.href = "index.html";
+}
+
+/* ===============================
+   SAFE THINKING ENGINE SYNC
+   =============================== */
+function syncToThinkingEngine(item){
+  if (!window.ThinkingEngine) return;
+
+  const signals = item.q
+    .toLowerCase()
+    .replace(/[^\u0900-\u097F\s]/g,"")
+    .split(" ")
+    .filter(w => w.length > 2);
+
+  ThinkingEngine.addConcept(
+    item.id,
+    signals,
+    () => item.a
+  );
+}
+
+/* ===============================
+   CRUD
+   =============================== */
+function saveItem(){
+  const question = q.value.trim();
+  const answer = a.value.trim();
+
+  if(!question || !answer){
+    alert("प्रश्न और उत्तर दोनों आवश्यक हैं");
+    return;
   }
 
-  function saveItem(){
-    const question = q.value.trim();
-    const answer = a.value.trim();
-
-    if(!question || !answer){
-      alert("प्रश्न और उत्तर दोनों अनिवार्य हैं");
-      return;
+  if(editId){
+    const item = data.find(x=>x.id===editId);
+    if(item){
+      item.q = question;
+      item.a = answer;
+      syncToThinkingEngine(item);
     }
-
-    if(editId){
-      const item = data.find(x=>x.id===editId);
-      if(item){
-        item.q = question;
-        item.a = answer;
-      }
-    } else {
-      data.push({
-        id: Date.now().toString(),
-        q: question,
-        a: answer
-      });
-    }
-
-    persist();
-    resetForm();
-    render();
+  } else {
+    const item = {
+      id: Date.now().toString(),
+      q: question,
+      a: answer
+    };
+    data.push(item);
+    syncToThinkingEngine(item);
   }
 
-  function editItem(id){
-    const item = data.find(x=>x.id===id);
-    if(!item) return;
-
-    editId = id;
-    q.value = item.q;
-    a.value = item.a;
-    formTitle.innerText = "✏️ प्रश्न संशोधित करें";
-  }
-
-  function deleteItem(id){
-    const item = data.find(x=>x.id===id);
-    if(!item) return;
-
-    if(!confirm("क्या यह प्रश्न हटाना है?\nयह क्रिया वापस नहीं ली जा सकती।")){
-      return;
-    }
-
-    data = data.filter(x=>x.id!==id);
-    persist();
-    render();
-  }
-
-  function cancelEdit(){
-    resetForm();
-  }
-
-  function resetForm(){
-    q.value="";
-    a.value="";
-    editId=null;
-    formTitle.innerText="➕ नया प्रश्न जोड़ें";
-  }
-
-  function persist(){
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(data));
-  }
-
-  function render(){
-    list.innerHTML="";
-    data.forEach(item=>{
-      const div=document.createElement("div");
-      div.className="item";
-      div.innerHTML=`
-        <b>${item.q}</b>
-        <div class="item-actions">
-          <button class="edit" onclick="editItem('${item.id}')">✏️ Edit</button>
-          <button class="delete" onclick="deleteItem('${item.id}')">❌ Delete</button>
-        </div>
-      `;
-      list.appendChild(div);
-    });
-  }
-
+  persist();
+  resetForm();
   render();
+}
+
+function editItem(id){
+  const item = data.find(x=>x.id===id);
+  if(!item) return;
+  editId = id;
+  q.value = item.q;
+  a.value = item.a;
+  formTitle.innerText = "✏️ प्रश्न संशोधित करें";
+}
+
+function deleteItem(id){
+  if(!confirm("यह प्रश्न हटाया जाएगा। जारी रखें?")) return;
+  data = data.filter(x=>x.id!==id);
+  persist();
+  render();
+}
+
+function cancelEdit(){
+  resetForm();
+}
+
+function resetForm(){
+  q.value="";
+  a.value="";
+  editId=null;
+  formTitle.innerText="➕ नया प्रश्न जोड़ें";
+}
+
+function persist(){
+  localStorage.setItem(ADMIN_KEY, JSON.stringify(data));
+}
+
+function render(){
+  list.innerHTML="";
+  data.forEach(item=>{
+    const d=document.createElement("div");
+    d.className="item";
+    d.innerHTML=`
+      <b>${item.q}</b>
+      <div class="item-actions">
+        <button class="edit" onclick="editItem('${item.id}')">Edit</button>
+        <button class="delete" onclick="deleteItem('${item.id}')">Delete</button>
+      </div>
+    `;
+    list.appendChild(d);
+  });
+}
+
+/* ===============================
+   INIT: LOAD INTO THINKING ENGINE
+   =============================== */
+data.forEach(syncToThinkingEngine);
+render();
 </script>
 
 </body>
