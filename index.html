@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>अंजली • Diagnostic</title>
+<title>अंजली</title>
 
 <style>
 :root{
@@ -52,48 +52,83 @@ body{
 <main class="card">
 
 <div class="title">अंजली</div>
-<div class="subtitle">Conversation Diagnostic Mode</div>
+<div class="subtitle">स्नेहपूर्ण • समझदार • मर्यादित</div>
 
-<div class="status" id="statusBox">
-  🧪 TTS / STT Unlock Test
-</div>
+<div class="status" id="appStatus">अंजली तैयार है</div>
 
 <div class="actions">
-  <button class="btn" id="ttsTestBtn">🔊 TTS Test</button>
-  <button class="btn" id="talkTestBtn">🎤 बातचीत टेस्ट</button>
+  <button class="btn" id="startBtn">शुरू करें</button>
+  <button class="btn" id="talkBtn">💬 बात करें</button>
+  <button class="btn" id="quizBtn">🧠 Quiz</button>
   <button class="btn secondary" id="adminBtn">🔐 Admin</button>
 </div>
 
-<div class="footer">
-  Safe • Isolated • No Brain Changes
-</div>
+<div class="footer">Core-Stable • Voice-Enabled</div>
 
-<!-- ========= TTS ONLY ========= -->
-  <script src="voice/stt.js"></script>
+<!-- ================= CORE ================= -->
+<script src="core/AmbiguityResolver.js"></script>
+<script src="core/ThinkingEngine.js"></script>
+<script src="core/AnjaliCore.js"></script>
+<script src="learning/AdminConceptLoader.js"></script>
+<script src="core/ContextMemory.js"></script>
+
+<!-- ================= LEARNING ================= -->
+<script src="learning/KnowledgeReader.js"></script>
+<script src="learning/KnowledgeBase.js"></script>
+<script src="learning/ExperienceMemory.js"></script>
+
+<!-- ================= ANSWER ================= -->
+<script src="answer/KnowledgeAnswerEngine.js"></script>
+<script src="answer/ResponseEngine.js"></script>
+
+<!-- ================= VOICE ================= -->
 <script src="voice/tts.js"></script>
+<script src="voice/commandBuffer.js"></script>
+<script src="voice/stt.js"></script>
+
+<!-- ================= MAIN ================= -->
+<script src="main.js"></script>
 
 <script>
-/* ===============================
-   SAFE NAVIGATION
-   =============================== */
-adminBtn.onclick = () => {
-  location.href = "admin.html";
+/* ================= NAV ================= */
+adminBtn.onclick = () => location.href = "admin.html";
+talkBtn.onclick  = () => location.href = "anjali_chat.html";
+
+/* ================= TTS UNLOCK FIX ================= */
+let TTS_UNLOCKED = false;
+
+function unlockTTSOnce(callback){
+  if (TTS_UNLOCKED) {
+    callback && callback();
+    return;
+  }
+
+  if (!window.AnjaliTTS) {
+    callback && callback();
+    return;
+  }
+
+  AnjaliTTS.speak("मैं तैयार हूँ", {}, () => {
+    TTS_UNLOCKED = true;
+    callback && callback();
+  });
+}
+
+/* ================= START CONVERSATION ================= */
+startBtn.onclick = () => {
+  unlockTTSOnce(() => {
+    appStatus.innerText = "🎤 सुन रही हूँ…";
+    if (window.AnjaliSTT) {
+      AnjaliSTT.startListening();
+    }
+  });
 };
 
-talkTestBtn.onclick = () => {
-  location.href = "test_conversation.html";
-};
-
-/* ===============================
-   🔓 TTS UNLOCK FIX (CRITICAL)
-   =============================== */
-ttsTestBtn.onclick = () => {
-
-  // 🔓 browser unlock
-  AnjaliTTS.speak("मैं बोल सकती हूँ");
-  speechSynthesis.cancel();
-
-  statusBox.innerText = "✅ TTS unlocked (अब इंडेक्स से भी बोलेगी)";
+/* ================= QUIZ SAFE ================= */
+quizBtn.onclick = () => {
+  unlockTTSOnce(() => {
+    alert("Quiz मोड सक्रिय किया जा सकता है");
+  });
 };
 </script>
 
