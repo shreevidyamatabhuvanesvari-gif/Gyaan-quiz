@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const STORAGE_KEY = "THINKING_ENGINE_MEMORY_V2";
+  const STORAGE_KEY = "THINKING_ENGINE_MEMORY_V1";
 
   /* ===============================
      MEMORY
