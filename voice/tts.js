@@ -1,89 +1,62 @@
 /* ======================================================
    voice/tts.js — Human-like TTS Controller (FINAL)
    RESPONSIBILITY:
-   - बोलना (Speak)
-   - तुरंत चुप होना (Stop)
-   - main.js के साथ सुरक्षित सहयोग
+   - Speak text answers
+   - Stop immediately
+   - Safe to call from ThinkingEngine / UI
    ====================================================== */
 
 (function (global) {
   "use strict";
 
   if (!("speechSynthesis" in window)) {
-    console.warn("TTS not supported in this browser");
+    console.warn("TTS not supported");
     return;
   }
 
-  let currentUtterance = null;
-  let speaking = false;
-  let sessionId = 0;
-
-  const DEFAULT_CONFIG = {
-    lang: "hi-IN",
-    rate: 0.75,
-    pitch: 1.05,
-    volume: 1
-  };
+  let utterance = null;
 
   function speak(text, options = {}, onEnd) {
-    if (typeof text !== "string" || !text.trim()) {
-      if (typeof onEnd === "function") onEnd(false);
-      return;
-    }
+    if (typeof text !== "string" || !text.trim()) return;
 
-    // नई session
-    sessionId++;
-    const mySession = sessionId;
+    stop(); // always stop previous
 
-    stop(); // पहले से बोल रहा हो तो रोकें
-
-    const cfg = { ...DEFAULT_CONFIG, ...options };
-
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = cfg.lang;
-    u.rate = cfg.rate;
-    u.pitch = cfg.pitch;
-    u.volume = cfg.volume;
-
-    speaking = true;
-    currentUtterance = u;
-
-    u.onend = () => {
-      if (mySession !== sessionId) return; // outdated
-      speaking = false;
-      currentUtterance = null;
-      if (typeof onEnd === "function") onEnd(true);
+    const cfg = {
+      lang: "hi-IN",
+      rate: 0.8,
+      pitch: 1.0,
+      volume: 1,
+      ...options
     };
 
-    u.onerror = () => {
-      if (mySession !== sessionId) return;
-      speaking = false;
-      currentUtterance = null;
-      if (typeof onEnd === "function") onEnd(false);
+    utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = cfg.lang;
+    utterance.rate = cfg.rate;
+    utterance.pitch = cfg.pitch;
+    utterance.volume = cfg.volume;
+
+    utterance.onend = () => {
+      utterance = null;
+      onEnd && onEnd();
     };
 
-    speechSynthesis.speak(u);
+    utterance.onerror = () => {
+      utterance = null;
+    };
+
+    window.speechSynthesis.speak(utterance);
   }
 
   function stop() {
-    if (!speaking) return;
-    sessionId++;
-    speaking = false;
-    currentUtterance = null;
-    speechSynthesis.cancel();
+    if (utterance) {
+      window.speechSynthesis.cancel();
+      utterance = null;
+    }
   }
 
-  function isSpeaking() {
-    return speaking;
-  }
-
-  /* ===============================
-     PUBLIC API
-     =============================== */
   global.AnjaliTTS = {
     speak,
-    stop,
-    isSpeaking
+    stop
   };
 
 })(window);
