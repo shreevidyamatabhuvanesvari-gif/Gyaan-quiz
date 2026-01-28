@@ -1,21 +1,29 @@
 /* ======================================================
-   core/ThinkingEngine.js — FINAL CLEAN CORE (ADMIN-COMPAT)
+   core/ThinkingEngine.js — UNIVERSAL FINAL CORE
+   PURPOSE:
+   - Universal question understanding (chat / voice / text)
+   - Correct concept disambiguation
+   - Admin panel compatible
+   - No false-positive answers
    ====================================================== */
 
 (function (global) {
   "use strict";
 
-  const STORAGE_KEY = "ANJALI_THINKING_MEMORY_V3";
+  const STORAGE_KEY = "ANJALI_THINKING_MEMORY_V4";
 
+  /* ===============================
+     DEFAULT MEMORY
+     =============================== */
   const DEFAULT_MEMORY = {
-    concepts: [],
+    concepts: [],   // { id, signals[], answer, confidence }
     stats: { learned: 0, answered: 0 }
   };
 
   let Memory = structuredClone(DEFAULT_MEMORY);
 
   /* ===============================
-     LOAD / SAVE
+     LOAD / SAVE (SAFE)
      =============================== */
   function load() {
     try {
@@ -36,15 +44,23 @@
   load();
 
   /* ===============================
-     TEXT NORMALIZATION
+     LANGUAGE NORMALIZATION
      =============================== */
-  const STOP_WORDS = ["का","की","के","कब","कौन","क्या","था","है","से","में"];
+
+  const STOP_WORDS = [
+    "का","की","के","कब","कौन","क्या","था","है","थे","से","में","पर"
+  ];
+
+  const STRONG_KEYWORDS = [
+    "संविधान","राष्ट्रपति","आंदोलन","वर्ष","कब","कौन","पहले","प्रथम"
+  ];
 
   function normalize(text) {
+    if (typeof text !== "string") return "";
     return text
       .toLowerCase()
-      .replace(/[^\u0900-\u097F\s]/g,"")
-      .replace(/\s+/g," ")
+      .replace(/[^\u0900-\u097F\s]/g, "")
+      .replace(/\s+/g, " ")
       .trim();
   }
 
@@ -55,32 +71,46 @@
   }
 
   /* ===============================
-     MATCHING
+     CONCEPT MATCHING (SMART)
      =============================== */
-  function findConcept(tokens) {
-    let best = null;
+  function scoreConcept(tokens, concept) {
     let score = 0;
+
+    for (const s of concept.signals) {
+      if (tokens.includes(s)) {
+        score += STRONG_KEYWORDS.includes(s) ? 3 : 1;
+      }
+    }
+    return score;
+  }
+
+  function findBestConcept(tokens) {
+    let best = null;
+    let bestScore = 0;
+
     for (const c of Memory.concepts) {
-      const s = c.signals.filter(x => tokens.includes(x)).length;
-      if (s > score) {
-        score = s;
+      const s = scoreConcept(tokens, c);
+      if (s > bestScore) {
+        bestScore = s;
         best = c;
       }
     }
-    return score > 0 ? best : null;
+
+    // 🔒 Minimum threshold
+    return bestScore >= 2 ? best : null;
   }
 
   /* ===============================
-     LEARNING
+     LEARNING (DEDUP SAFE)
      =============================== */
   function learn(question, answer) {
     const signals = tokenize(question);
     if (signals.length < 2) return;
 
-    const exists = findConcept(signals);
-    if (exists) {
-      exists.answer = answer;
-      exists.confidence += 1;
+    const existing = findBestConcept(signals);
+    if (existing) {
+      existing.answer = answer;
+      existing.confidence += 1;
       save();
       return;
     }
@@ -97,7 +127,7 @@
   }
 
   /* ===============================
-     THINK
+     THINK (MAIN ENTRY)
      =============================== */
   function think(input) {
     const tokens = tokenize(input);
@@ -105,7 +135,8 @@
       return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
     }
 
-    const concept = findConcept(tokens);
+    const concept = findBestConcept(tokens);
+
     if (concept) {
       concept.confidence += 0.5;
       Memory.stats.answered++;
@@ -120,11 +151,13 @@
   }
 
   /* ===============================
-     🔑 ADMIN COMPATIBILITY BRIDGE
+     🔑 ADMIN BRIDGE (CRITICAL)
      =============================== */
   function addConcept(id, signals, responder) {
-    if (!signals || !responder) return;
-    learn(signals.join(" "), responder());
+    if (!Array.isArray(signals) || typeof responder !== "function") return;
+    const q = signals.join(" ");
+    const a = String(responder());
+    learn(q, a);
   }
 
   /* ===============================
@@ -133,7 +166,7 @@
   global.ThinkingEngine = {
     think,
     teach: learn,
-    addConcept,          // ✅ यही missing link था
+    addConcept,
     inspect: () => structuredClone(Memory)
   };
 
