@@ -135,8 +135,6 @@ const chatBox = document.getElementById("chatBox");
 const listenBtn = document.getElementById("listenBtn");
 const backBtn = document.getElementById("backBtn");
 
-let listeningStarted = false;
-
 function addMsg(text, who){
   const d = document.createElement("div");
   d.className = "msg " + who;
@@ -155,6 +153,26 @@ function addSys(text){
 /* ================= NAV ================= */
 backBtn.onclick = () => location.href="index.html";
 
+/* ================= 🔗 निर्णायक FIX =================
+   Admin Panel का ज्ञान ThinkingEngine में लोड
+   ================================================ */
+const ADMIN_KEY = "ANJALI_ADMIN_KNOWLEDGE_V1";
+
+(function loadAdminKnowledge(){
+  if (!window.ThinkingEngine) return;
+
+  let data = [];
+  try{
+    data = JSON.parse(localStorage.getItem(ADMIN_KEY)) || [];
+  }catch(e){ data = []; }
+
+  data.forEach(item=>{
+    if (!item.q || !item.a) return;
+
+    ThinkingEngine.teach(item.q, item.a);
+  });
+})();
+
 /* ================= CHAT START ================= */
 listenBtn.onclick = () => {
 
@@ -163,27 +181,23 @@ listenBtn.onclick = () => {
     return;
   }
 
-  if (!listeningStarted) {
-    listeningStarted = true;
+  // 🔑 mic unlock (user gesture)
+  AnjaliSTT.unlock();
 
-    // 🔑 निर्णायक FIX — mic unlock
-    AnjaliSTT.unlock();
+  AnjaliSTT.onText = function(userText){
+    addMsg(userText, "user");
 
-    AnjaliSTT.onText = function(userText){
-      addMsg(userText, "user");
+    const result = ThinkingEngine.think(userText);
 
-      const result = ThinkingEngine.think(userText);
-
-      if (result?.text) {
-        addMsg(result.text, "anjali");
-        if (window.AnjaliTTS) {
-          AnjaliTTS.speak(result.text);
-        }
-      } else {
-        addMsg("इस प्रश्न का उत्तर अभी मेरे पास नहीं है।", "anjali");
+    if (result?.text) {
+      addMsg(result.text, "anjali");
+      if (window.AnjaliTTS) {
+        AnjaliTTS.speak(result.text);
       }
-    };
-  }
+    } else {
+      addMsg("इस प्रश्न का उत्तर अभी मेरे पास नहीं है।", "anjali");
+    }
+  };
 
   addSys("🎤 सुन रही हूँ…");
   AnjaliSTT.start();
