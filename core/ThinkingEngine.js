@@ -44,31 +44,44 @@
   load();
 
   /* ===============================
-     LANGUAGE NORMALIZATION
-     =============================== */
+   LANGUAGE NORMALIZATION (UNIVERSAL + CONVERSATION)
+   =============================== */
 
-  const STOP_WORDS = [
-    "का","की","के","कब","कौन","क्या","था","है","थे","से","में","पर"
-  ];
+/*
+  सिद्धांत:
+  1. Question words = SIGNAL (कभी हटेंगे नहीं)
+  2. Meaning words = DATA से आएँगे
+  3. केवल अत्यंत कमजोर filler हटेंगे
+*/
 
-  const STRONG_KEYWORDS = [
-    "संविधान","राष्ट्रपति","आंदोलन","वर्ष","कब","कौन","पहले","प्रथम"
-  ];
+const WEAK_FILLERS = new Set([
+  "का","की","के","को","से","में","पर"
+]);
 
-  function normalize(text) {
-    if (typeof text !== "string") return "";
-    return text
-      .toLowerCase()
-      .replace(/[^\u0900-\u097F\s]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
+function normalize(text) {
+  if (typeof text !== "string") return "";
 
-  function tokenize(text) {
-    return normalize(text)
-      .split(" ")
-      .filter(w => w && !STOP_WORDS.includes(w));
-  }
+  return text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\u0900-\u097F\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/*
+  tokenize:
+  - प्रश्न के शब्द सुरक्षित
+  - विषय के शब्द सुरक्षित
+  - केवल कमजोर filler हटते हैं
+*/
+function tokenize(text) {
+  const words = normalize(text).split(" ").filter(Boolean);
+
+  return words.filter(w =>
+    w.length > 1 && !WEAK_FILLERS.has(w)
+  );
+}
 
   /* ===============================
      CONCEPT MATCHING (SMART)
