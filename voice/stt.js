@@ -1,9 +1,5 @@
 /* ==========================================================
-   voice/stt.js — USER-GESTURE SAFE STT (FINAL)
-   RESPONSIBILITY:
-   - Start ONLY on user click
-   - Send recognized text to host (onText)
-   - No auto-think, no hidden calls
+   voice/stt.js — FINAL MIC-UNLOCK SAFE VERSION
    ========================================================== */
 
 (function (global) {
@@ -13,7 +9,6 @@
     global.SpeechRecognition || global.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    console.warn("STT not supported");
     global.AnjaliSTT = { available: false };
     return;
   }
@@ -23,46 +18,39 @@
   let unlocked = false;
 
   function normalize(t) {
-    return typeof t === "string"
-      ? t.trim()
-      : "";
+    return typeof t === "string" ? t.trim() : "";
   }
 
-  function create() {
-    const r = new SpeechRecognition();
-    r.lang = "hi-IN";
-    r.continuous = false;        // 👈 IMPORTANT
-    r.interimResults = false;
+  function startRecognition() {
+    if (!unlocked || listening) return;
 
-    r.onresult = e => {
+    recognition = new SpeechRecognition();
+    recognition.lang = "hi-IN";
+    recognition.continuous = false;      // 🔴 MUST be false
+    recognition.interimResults = false;
+
+    recognition.onresult = e => {
       const text = normalize(e.results[0][0].transcript);
-      if (!text) return;
+      listening = false;
 
-      if (typeof global.AnjaliSTT.onText === "function") {
+      if (text && typeof global.AnjaliSTT.onText === "function") {
         global.AnjaliSTT.onText(text);
       }
     };
 
-    r.onend = () => {
+    recognition.onerror = () => {
       listening = false;
     };
 
-    r.onerror = () => {
+    recognition.onend = () => {
       listening = false;
     };
 
-    return r;
-  }
-
-  function start() {
-    if (!unlocked || listening) return;
-
-    recognition = create();
-    recognition.start();
+    recognition.start();   // 🎯 यही mic खोलता है
     listening = true;
   }
 
-  function stop() {
+  function stopRecognition() {
     if (recognition) {
       recognition.stop();
       recognition = null;
@@ -82,11 +70,11 @@
     },
 
     start() {
-      start();
+      startRecognition();
     },
 
     stop() {
-      stop();
+      stopRecognition();
     },
 
     isListening() {
