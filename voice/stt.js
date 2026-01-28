@@ -1,112 +1,186 @@
 /* ==========================================================
-   voice/stt.js — STT CONTROLLER (FINAL & COMPATIBLE)
+   voice/stt.js — HUMAN-SAFE, USER-GESTURE STT (PRODUCTION)
    RESPONSIBILITY:
-   - User gesture के बाद mic start
-   - Speech → text निकालना
-   - Text को index / main तक भेजना (onText)
-   - कोई सोच, सीख, जवाब नहीं
+   - Start listening ONLY after explicit user action
+   - Continuous listening with safe auto-restart
+   - Command detection (STOP / PAUSE / RESUME / CHANGE)
+   - Forward clean text to host app (main / chat)
+   - Zero dependency on ThinkingEngine / TTS
    ========================================================== */
 
 (function (global) {
   "use strict";
 
   /* ===============================
-     BROWSER SUPPORT
+     BROWSER SUPPORT CHECK
      =============================== */
   const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+    global.SpeechRecognition || global.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    console.warn("STT not supported in this browser.");
+    console.warn("❌ STT not supported in this browser");
+    global.AnjaliSTT = {
+      available: false,
+      startListening() {
+        throw new Error("STT not supported");
+      },
+      stopListening() {},
+      isListening() {
+        return false;
+      }
+    };
     return;
   }
 
   /* ===============================
-     STATE
+     CONFIG
+     =============================== */
+  const LISTEN_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+  const LANG = "hi-IN";
+
+  /* ===============================
+     COMMAND DICTIONARY (SAFE)
+     =============================== */
+  const COMMANDS = {
+    STOP: ["रुको", "बस", "चुप", "चुप रहो", "मत बोलो"],
+    PAUSE: ["रुक जाओ", "ठहरो", "रुको ज़रा"],
+    RESUME: ["जारी रखो", "फिर शुरू", "आगे बताओ"],
+    CHANGE: ["प्रश्न बदलो", "अगला सवाल", "कुछ और"]
+  };
+
+  /* ===============================
+     INTERNAL STATE
      =============================== */
   let recognition = null;
   let listening = false;
+  let paused = false;
+  let listenTimer = null;
+  let userGestureUnlocked = false;
 
   /* ===============================
      UTILS
      =============================== */
   function normalize(text) {
-    if (typeof text !== "string") return "";
-    return text.trim();
+    return typeof text === "string"
+      ? text.trim().toLowerCase()
+      : "";
+  }
+
+  function detectCommand(text) {
+    for (const type in COMMANDS) {
+      if (COMMANDS[type].some(cmd => text.includes(cmd))) {
+        return type;
+      }
+    }
+    return null;
+  }
+
+  function resetListenTimer() {
+    clearTimeout(listenTimer);
+    listenTimer = setTimeout(() => {
+      restart();
+    }, LISTEN_TIMEOUT_MS);
   }
 
   /* ===============================
-     CORE START
+     CORE RECOGNITION
      =============================== */
-  function startListening() {
-    if (listening) return;
+  function createRecognition() {
+    const r = new SpeechRecognition();
+    r.lang = LANG;
+    r.continuous = true;
+    r.interimResults = false;
 
-    recognition = new SpeechRecognition();
-    recognition.lang = "hi-IN";
-    recognition.continuous = true;
-    recognition.interimResults = false;
+    r.onresult = e => {
+      const transcript =
+        e.results[e.results.length - 1][0].transcript;
 
-    recognition.onresult = event => {
-      const last =
-        event.results[event.results.length - 1][0].transcript;
-
-      const text = normalize(last);
+      const text = normalize(transcript);
       if (!text) return;
 
-      /* 👉 MICRO COMMAND BUFFER (optional) */
-      if (global.CommandBuffer?.feed) {
-        CommandBuffer.feed(text);
+      resetListenTimer();
+
+      const cmd = detectCommand(text);
+      if (cmd) {
+        if (global.AnjaliSTT.onCommand) {
+          global.AnjaliSTT.onCommand(cmd, text);
+        }
+        if (cmd === "STOP" || cmd === "PAUSE") paused = true;
+        if (cmd === "RESUME") paused = false;
+        return;
       }
 
-      /* 👉 MAIN HANDSHAKE */
-      if (typeof AnjaliSTT.onText === "function") {
-        AnjaliSTT.onText(text);
+      if (paused) return;
+
+      if (global.AnjaliSTT.onText) {
+        global.AnjaliSTT.onText(text);
       }
     };
 
-    recognition.onerror = () => {
-      stopListening();
-    };
+    r.onerror = () => restart();
+    r.onend = () => restart();
 
-    recognition.onend = () => {
-      listening = false;
-    };
-
-    try {
-      recognition.start();
-      listening = true;
-    } catch (e) {
-      console.error("STT start failed", e);
-    }
+    return r;
   }
 
-  /* ===============================
-     CORE STOP
-     =============================== */
-  function stopListening() {
-    if (!recognition) return;
+  function startInternal() {
+    if (listening || !userGestureUnlocked) return;
 
-    try {
+    recognition = createRecognition();
+    recognition.start();
+    listening = true;
+    paused = false;
+    resetListenTimer();
+  }
+
+  function stopInternal() {
+    clearTimeout(listenTimer);
+    if (recognition) {
+      recognition.onend = null;
       recognition.stop();
-    } catch (_) {}
-
-    recognition = null;
+      recognition = null;
+    }
     listening = false;
   }
 
+  function restart() {
+    if (!listening) return;
+    stopInternal();
+    startInternal();
+  }
+
   /* ===============================
-     PUBLIC API (LOCKED)
+     PUBLIC API (SAFE)
      =============================== */
   global.AnjaliSTT = {
-    startListening,
-    stopListening,
+    available: true,
 
-    /* index / main यहाँ attach करेंगे */
-    onText: null,
+    /**
+     * MUST be called inside a user click / tap handler
+     */
+    unlockByUserGesture() {
+      userGestureUnlocked = true;
+    },
+
+    startListening() {
+      if (!userGestureUnlocked) {
+        console.warn("❌ STT blocked: user gesture not detected");
+        return;
+      }
+      startInternal();
+    },
+
+    stopListening() {
+      stopInternal();
+    },
 
     isListening() {
       return listening;
-    }
+    },
+
+    /* hooks (assigned by main / chat) */
+    onText: null,
+    onCommand: null
   };
 
 })(window);
