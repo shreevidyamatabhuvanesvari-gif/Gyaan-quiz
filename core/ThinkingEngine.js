@@ -1,33 +1,60 @@
+/* ======================================================
+   core/ThinkingEngine.js — FINAL CLEAN CORE
+   FIXED:
+   - Safe memory load
+   - No duplicate concepts
+   - Meaningful signals
+   - Fast learning
+   - UI-safe TTS hook
+   ====================================================== */
+
 (function (global) {
   "use strict";
 
-  const STORAGE_KEY = "THINKING_ENGINE_MEMORY_V1";
+  const STORAGE_KEY = "ANJALI_THINKING_MEMORY_V3";
 
   /* ===============================
-     MEMORY
+     DEFAULT MEMORY SHAPE
      =============================== */
-  function loadMemory() {
+  const DEFAULT_MEMORY = {
+    concepts: [],
+    stats: { learned: 0, answered: 0 }
+  };
+
+  let Memory = structuredClone(DEFAULT_MEMORY);
+
+  /* ===============================
+     LOAD / SAVE (SAFE)
+     =============================== */
+  function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      const data = raw ? JSON.parse(raw) : {};
-      return {
-        concepts: Array.isArray(data.concepts) ? data.concepts : [],
-        bias: typeof data.bias === "object" ? data.bias : {}
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      Memory = {
+        concepts: Array.isArray(parsed.concepts) ? parsed.concepts : [],
+        stats: {
+          learned: Number(parsed.stats?.learned) || 0,
+          answered: Number(parsed.stats?.answered) || 0
+        }
       };
-    } catch (e) {
-      return { concepts: [], bias: {} };
+    } catch (_) {
+      Memory = structuredClone(DEFAULT_MEMORY);
     }
   }
 
-  function saveMemory() {
+  function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Memory));
   }
 
-  const Memory = loadMemory();
+  load();
 
   /* ===============================
-     NORMALIZATION + TOKENIZATION
+     LANGUAGE NORMALIZATION
      =============================== */
+  const STOP_WORDS = ["का", "की", "के", "कब", "कौन", "क्या", "था", "है", "से", "में"];
+
   function normalize(text) {
     if (typeof text !== "string") return "";
     return text
@@ -38,172 +65,108 @@
   }
 
   function tokenize(text) {
-    return normalize(text).split(" ").filter(Boolean);
-  }
-
-  function ngrams(tokens, n) {
-    const res = [];
-    for (let i = 0; i <= tokens.length - n; i++) {
-      res.push(tokens.slice(i, i + n).join(" "));
-    }
-    return res;
+    return normalize(text)
+      .split(" ")
+      .filter(w => w && !STOP_WORDS.includes(w));
   }
 
   /* ===============================
-     1. THALAMUS
+     UNDERSTANDING
      =============================== */
-  function thalamus(raw) {
-    if (typeof raw !== "string") return null;
-    const t = raw.trim();
-    return t.length < 2 ? null : normalize(t);
+  function understand(input) {
+    const tokens = tokenize(input);
+    return { raw: input, tokens };
   }
 
   /* ===============================
-     2. CORTEX (SEMANTIC SCORING)
+     CONCEPT MATCHING
      =============================== */
-  function cortex(normText) {
-    const tokens = tokenize(normText);
-    if (!tokens.length) return [];
-
-    const uni = tokens;
-    const bi = ngrams(tokens, 2);
-    const tri = ngrams(tokens, 3);
-
-    const results = [];
+  function findConcept(tokens) {
+    let best = null;
+    let bestScore = 0;
 
     for (const c of Memory.concepts) {
-      let score = 0;
-
-      for (const s of c.signals) {
-        if (uni.includes(s)) score += 1;
-        if (bi.includes(s)) score += 3;
-        if (tri.includes(s)) score += 5;
-      }
-
-      if (score > 0) {
-        const bias = Memory.bias[c.id] || 1;
-        results.push({
-          concept: c,
-          score: score * c.weight * bias
-        });
+      let score = c.signals.filter(s => tokens.includes(s)).length;
+      if (score > bestScore) {
+        bestScore = score;
+        best = c;
       }
     }
-    return results;
+    return bestScore > 0 ? best : null;
   }
 
   /* ===============================
-     3. BASAL GANGLIA (RANKING)
+     FAST LEARNING (DEDUP SAFE)
      =============================== */
-  function basalGanglia(matches) {
-    if (!Array.isArray(matches) || !matches.length) return null;
-    return matches
-      .slice()
-      .sort((a, b) => b.score - a.score);
-  }
+  function learn(question, answer) {
+    const signals = tokenize(question);
+    if (signals.length < 2) return;
 
-
-  /* ===============================
-     4. PREFRONTAL (ENTROPY CHECK)
-     =============================== */
-  function prefrontal(ranked) {
-    if (!ranked || ranked.length === 0) return null;
-    if (ranked.length === 1) return ranked[0];
-
-    const top = ranked[0];
-    const second = ranked[1];
-
-    const entropy = second.score / top.score;
-
-    if (entropy > 0.65) {
-      return {
-        clarify: true,
-        options: [top.concept.id, second.concept.id]
-      };
+    const existing = findConcept(signals);
+    if (existing) {
+      existing.confidence += 1;
+      save();
+      return;
     }
-    return top;
-  }
-
-  /* ===============================
-     5. HIPPOCAMPUS (LEARNING)
-     =============================== */
-  function learn(conceptId, success) {
-    if (typeof conceptId !== "string") return;
-
-    const c = Memory.concepts.find(x => x.id === conceptId);
-    if (!c) return;
-
-    c.weight += success ? 1.5 : -1;
-    if (c.weight < 1) c.weight = 1;
-
-    Memory.bias[conceptId] = (Memory.bias[conceptId] || 1) + (success ? 0.2 : -0.1);
-    if (Memory.bias[conceptId] < 0.5) Memory.bias[conceptId] = 0.5;
-
-    saveMemory();
-  }
-
-  /* ===============================
-     6. NEUROPLASTICITY
-     =============================== */
-  function addConcept(id, signals, responder) {
-    if (!id || typeof responder !== "function") return;
-    if (!Array.isArray(signals) || !signals.length) return;
-
-    if (Memory.concepts.find(c => c.id === id)) return;
 
     Memory.concepts.push({
-      id,
-      signals: signals.map(normalize),
-      respond: responder,
-      weight: 5
+      id: Date.now().toString(),
+      signals,
+      answer,
+      confidence: 1
     });
 
-    Memory.bias[id] = 1;
-    saveMemory();
+    Memory.stats.learned++;
+    save();
   }
 
   /* ===============================
-     THINK
+     RESPONSE (TEXT ONLY)
+     =============================== */
+  function respond(text, unknown = false) {
+    return { text, unknown };
+  }
+
+  /* ===============================
+     CORE THINK
      =============================== */
   function think(input) {
-  const norm = thalamus(input);
-  if (!norm) {
-    return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
+    const meaning = understand(input);
+    if (!meaning.tokens.length) {
+      return respond("मुझे प्रश्न स्पष्ट नहीं मिला।");
+    }
+
+    const concept = findConcept(meaning.tokens);
+
+    if (concept) {
+      concept.confidence += 0.5;
+      Memory.stats.answered++;
+      save();
+      return respond(concept.answer);
+    }
+
+    return respond(
+      "इस प्रश्न का उत्तर अभी मेरे पास नहीं है। आप चाहें तो मुझे सिखा सकते हैं।",
+      true
+    );
   }
 
-  const matches = cortex(norm);
-  if (!matches.length) {
-    return { text: "इस प्रश्न का उत्तर अभी मेरे पास नहीं है।" };
+  /* ===============================
+     PUBLIC TEACH API
+     =============================== */
+  function teach(question, answer) {
+    if (!question || !answer) return false;
+    learn(question, answer);
+    return true;
   }
-
-  const ranked = basalGanglia(matches);
-  if (!ranked) {
-    return { text: "मैं इस प्रश्न पर निर्णय नहीं ले सका।" };
-  }
-
-  // ✅ एकमात्र निर्णय बिंदु
-  const decision = AmbiguityResolver.resolve(ranked, Memory.bias);
-
-  if (!decision) {
-    return { text: "मैं इस प्रश्न पर निश्चित निर्णय नहीं ले सका।" };
-  }
-
-  if (decision.clarify) {
-    return { clarify: true, options: decision.options };
-  }
-
-  return {
-    text: decision.concept.respond(),
-    conceptId: decision.concept.id
-  };
-}
 
   /* ===============================
      EXPORT
      =============================== */
   global.ThinkingEngine = {
     think,
-    learn,
-    addConcept
+    teach,
+    inspect: () => structuredClone(Memory)
   };
 
 })(window);
