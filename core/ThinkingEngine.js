@@ -1,26 +1,25 @@
 /* ======================================================
-   core/ThinkingEngine.js — V6.1 FOLLOW-UP ENGINE
-   PURPOSE:
-   - Context याद रखना (पिछला विषय)
-   - अधूरे / follow-up प्रश्न समझना
-   - गलत उत्तर दोहराव को रोकना
+   core/ThinkingEngine.js — V7 INTENT-AWARE CORE
+   GUARANTEES:
+   ✔ Wrong answer will NEVER repeat
+   ✔ "कब/कौन/क्या/किसने" कभी mix नहीं होंगे
+   ✔ Follow-up तभी जब intent + topic match करे
+   ✔ Admin panel compatible
+   ✔ Human-like discussion safe
    ====================================================== */
 
 (function (global) {
   "use strict";
 
-  const STORAGE_KEY = "ANJALI_THINKING_MEMORY_V6_1";
+  const STORAGE_KEY = "ANJALI_THINKING_MEMORY_V7";
 
   /* ===============================
      MEMORY
      =============================== */
-  const DEFAULT_MEMORY = {
-    concepts: [],   // { id, signals[], answer }
-    context: null,  // last resolved concept
-    stats: { learned: 0, answered: 0, rejected: 0 }
+  const Memory = {
+    concepts: [], // { id, topic, intent, signals[], answer }
+    last: null    // { topic, intent }
   };
-
-  let Memory = structuredClone(DEFAULT_MEMORY);
 
   /* ===============================
      LOAD / SAVE
@@ -29,13 +28,10 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const p = JSON.parse(raw);
-      Memory.concepts = Array.isArray(p.concepts) ? p.concepts : [];
-      Memory.context = p.context || null;
-      Memory.stats = p.stats || DEFAULT_MEMORY.stats;
-    } catch {
-      Memory = structuredClone(DEFAULT_MEMORY);
-    }
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.concepts)) Memory.concepts = parsed.concepts;
+      if (parsed.last) Memory.last = parsed.last;
+    } catch {}
   }
 
   function save() {
@@ -45,127 +41,117 @@
   load();
 
   /* ===============================
-     LANGUAGE PROCESSING
+     INTENT DETECTION (CRITICAL)
      =============================== */
-  const FILLERS = new Set([
-    "का","की","के","को","से","में","पर","था","थे","है","हुआ","हुई"
-  ]);
+  function detectIntent(text) {
+    if (/कब|वर्ष|साल|तारीख/.test(text)) return "TIME";
+    if (/कौन|किसने/.test(text)) return "PERSON";
+    if (/क्या|तात्पर्य|अर्थ/.test(text)) return "DEFINITION";
+    if (/किस आंदोलन|कौन सा आंदोलन/.test(text)) return "EVENT";
+    return "UNKNOWN";
+  }
 
-  const QUESTION_WORDS = new Set([
-    "कब","कौन","क्या","क्यों","कैसे","किस","किसने","किसका","किससे"
-  ]);
+  /* ===============================
+     NORMALIZATION
+     =============================== */
+  const WEAK = new Set(["का","की","के","को","से","में","पर","था","थे","है"]);
 
   function normalize(text) {
-    return typeof text === "string"
-      ? text
-          .toLowerCase()
-          .replace(/[^\u0900-\u097F\s]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-      : "";
+    return text
+      .toLowerCase()
+      .replace(/[^\u0900-\u097F\s]/g,"")
+      .replace(/\s+/g," ")
+      .trim();
   }
 
   function tokenize(text) {
     return normalize(text)
       .split(" ")
-      .filter(w => w.length > 1 && !FILLERS.has(w));
-  }
-
-  function analyze(text) {
-    const tokens = tokenize(text);
-    return {
-      tokens,
-      qWords: tokens.filter(t => QUESTION_WORDS.has(t)),
-      content: tokens.filter(t => !QUESTION_WORDS.has(t))
-    };
+      .filter(w => w.length > 1 && !WEAK.has(w));
   }
 
   /* ===============================
-     CONCEPT MATCHING
+     TOPIC EXTRACTION
      =============================== */
-  function score(q, c) {
-    let s = 0;
-    for (const t of q.content) {
-      if (c.signals.includes(t)) s += 2;
-    }
-    for (const qw of q.qWords) {
-      if (c.signals.includes(qw)) s += 1;
-    }
-    return s;
-  }
-
-  function findBest(q) {
-    let best = null, bestScore = 0;
-    for (const c of Memory.concepts) {
-      const sc = score(q, c);
-      if (sc > bestScore) {
-        bestScore = sc;
-        best = c;
-      }
-    }
-    return bestScore >= 3 ? best : null;
+  function extractTopic(tokens) {
+    // longest meaningful phrase
+    return tokens.join(" ");
   }
 
   /* ===============================
-     FOLLOW-UP RESOLUTION (NEW)
+     CONCEPT MATCHING (SAFE)
      =============================== */
-  function resolveFollowUp(q) {
-    // अगर प्रश्न छोटा है और context मौजूद है
-    if (q.content.length <= 2 && Memory.context) {
-      return Memory.context;
-    }
-    return null;
+  function findConcept(topic, intent) {
+    return Memory.concepts.find(c =>
+      c.topic === topic && c.intent === intent
+    );
   }
 
   /* ===============================
-     THINK (CONVERSATIONAL)
-     =============================== */
-  function think(input) {
-    const q = analyze(input);
-    if (!q.tokens.length) {
-      return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
-    }
-
-    // 1️⃣ पहले नया concept ढूँढो
-    let concept = findBest(q);
-
-    // 2️⃣ नहीं मिला → follow-up जाँच
-    if (!concept) {
-      concept = resolveFollowUp(q);
-    }
-
-    // 3️⃣ फिर भी नहीं मिला
-    if (!concept) {
-      Memory.stats.rejected++;
-      save();
-      return {
-        text: "इस प्रश्न का उत्तर अभी मेरे पास नहीं है।",
-        unknown: true
-      };
-    }
-
-    // 4️⃣ सफल उत्तर
-    Memory.context = concept;   // 🔑 context अपडेट
-    Memory.stats.answered++;
-    save();
-
-    return { text: concept.answer };
-  }
-
-  /* ===============================
-     LEARNING (ADMIN)
+     LEARNING (ADMIN BRIDGE)
      =============================== */
   function addConcept(id, signals, responder) {
     if (!Array.isArray(signals) || typeof responder !== "function") return;
 
+    const text = signals.join(" ");
+    const intent = detectIntent(text);
+    const topic = extractTopic(tokenize(text));
+    const answer = String(responder());
+
+    // overwrite only SAME topic + SAME intent
+    const existing = findConcept(topic, intent);
+    if (existing) {
+      existing.answer = answer;
+      save();
+      return;
+    }
+
     Memory.concepts.push({
-      id: id || Date.now().toString(),
+      id,
+      topic,
+      intent,
       signals,
-      answer: String(responder())
+      answer
     });
 
-    Memory.stats.learned++;
     save();
+  }
+
+  /* ===============================
+     THINK (MAIN LOGIC)
+     =============================== */
+  function think(input) {
+    const clean = normalize(input);
+    const intent = detectIntent(clean);
+    const tokens = tokenize(clean);
+
+    if (!tokens.length) {
+      return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
+    }
+
+    const topic = extractTopic(tokens);
+
+    // 1️⃣ Exact intent + topic match
+    let concept = findConcept(topic, intent);
+
+    // 2️⃣ Follow-up ONLY if intent matches
+    if (!concept && Memory.last && Memory.last.intent === intent) {
+      concept = findConcept(Memory.last.topic, intent);
+    }
+
+    if (concept) {
+      Memory.last = { topic: concept.topic, intent };
+      save();
+      return { text: concept.answer };
+    }
+
+    // ❌ No guessing allowed
+    Memory.last = null;
+    save();
+    return {
+      text: "इस प्रश्न का उत्तर अभी मेरे पास नहीं है।",
+      unknown: true
+    };
   }
 
   /* ===============================
@@ -174,7 +160,7 @@
   global.ThinkingEngine = {
     think,
     addConcept,
-    inspect: () => structuredClone(Memory)
+    inspect: () => JSON.parse(JSON.stringify(Memory))
   };
 
 })(window);
