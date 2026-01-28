@@ -1,5 +1,5 @@
 /* ==========================================================
-   voice/stt.js — FINAL MIC-UNLOCK SAFE VERSION
+   voice/stt.js — FINAL 2-MINUTE ROLLING STT (PRODUCTION)
    ========================================================== */
 
 (function (global) {
@@ -13,49 +13,92 @@
     return;
   }
 
+  /* ===============================
+     CONFIG
+     =============================== */
+  const LISTEN_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
+  const LANG = "hi-IN";
+
+  /* ===============================
+     STATE
+     =============================== */
   let recognition = null;
   let listening = false;
   let unlocked = false;
+  let listenTimer = null;
 
-  function normalize(t) {
-    return typeof t === "string" ? t.trim() : "";
+  /* ===============================
+     UTILS
+     =============================== */
+  function normalize(text) {
+    return typeof text === "string" ? text.trim() : "";
   }
 
-  function startRecognition() {
-    if (!unlocked || listening) return;
+  function resetListenWindow() {
+    clearTimeout(listenTimer);
+    listenTimer = setTimeout(() => {
+      stopInternal();
+    }, LISTEN_WINDOW_MS);
+  }
 
-    recognition = new SpeechRecognition();
-    recognition.lang = "hi-IN";
-    recognition.continuous = false;      // 🔴 MUST be false
-    recognition.interimResults = false;
+  /* ===============================
+     CORE RECOGNITION
+     =============================== */
+  function createRecognition() {
+    const r = new SpeechRecognition();
+    r.lang = LANG;
+    r.continuous = true;          // ✅ MUST be true
+    r.interimResults = false;
 
-    recognition.onresult = e => {
-      const text = normalize(e.results[0][0].transcript);
-      listening = false;
+    r.onresult = e => {
+      const result =
+        e.results[e.results.length - 1][0].transcript;
 
-      if (text && typeof global.AnjaliSTT.onText === "function") {
+      const text = normalize(result);
+      if (!text) return;
+
+      resetListenWindow(); // 🔁 rolling 2-minute window
+
+      if (typeof global.AnjaliSTT.onText === "function") {
         global.AnjaliSTT.onText(text);
       }
     };
 
-    recognition.onerror = () => {
-      listening = false;
+    r.onerror = () => {
+      restart(); // auto recover
     };
 
-    recognition.onend = () => {
-      listening = false;
+    r.onend = () => {
+      restart(); // keep mic alive
     };
 
-    recognition.start();   // 🎯 यही mic खोलता है
-    listening = true;
+    return r;
   }
 
-  function stopRecognition() {
+  function startInternal() {
+    if (!unlocked || listening) return;
+
+    recognition = createRecognition();
+    recognition.start();
+    listening = true;
+    resetListenWindow();
+  }
+
+  function stopInternal() {
+    clearTimeout(listenTimer);
     if (recognition) {
+      recognition.onend = null;
+      recognition.onerror = null;
       recognition.stop();
       recognition = null;
     }
     listening = false;
+  }
+
+  function restart() {
+    if (!listening) return;
+    stopInternal();
+    startInternal();
   }
 
   /* ===============================
@@ -64,17 +107,17 @@
   global.AnjaliSTT = {
     available: true,
 
-    /** MUST call inside button click */
+    /** MUST be called inside user click */
     unlock() {
       unlocked = true;
     },
 
     start() {
-      startRecognition();
+      startInternal();
     },
 
     stop() {
-      stopRecognition();
+      stopInternal();
     },
 
     isListening() {
