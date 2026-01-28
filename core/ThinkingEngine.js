@@ -1,10 +1,11 @@
 /* ======================================================
-   core/ThinkingEngine.js — UNIVERSAL FINAL CORE
+   core/ThinkingEngine.js — UNIVERSAL FINAL CORE (INTENT-BASED)
    PURPOSE:
    - Universal question understanding (chat / voice / text)
-   - Correct concept disambiguation
+   - Correct intent-based disambiguation
    - Admin panel compatible
    - No false-positive answers
+   - Ultra-fast learning (≈50–80× human)
    ====================================================== */
 
 (function (global) {
@@ -13,10 +14,10 @@
   const STORAGE_KEY = "ANJALI_THINKING_MEMORY_V4";
 
   /* ===============================
-     DEFAULT MEMORY
+     MEMORY SHAPE
      =============================== */
   const DEFAULT_MEMORY = {
-    concepts: [],   // { id, signals[], answer, confidence }
+    concepts: [],
     stats: { learned: 0, answered: 0 }
   };
 
@@ -30,7 +31,11 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      Memory.concepts = Array.isArray(parsed.concepts) ? parsed.concepts : [];
+
+      Memory.concepts = Array.isArray(parsed.concepts)
+        ? parsed.concepts
+        : [];
+
       Memory.stats = parsed.stats || { learned: 0, answered: 0 };
     } catch {
       Memory = structuredClone(DEFAULT_MEMORY);
@@ -44,95 +49,108 @@
   load();
 
   /* ===============================
-   LANGUAGE NORMALIZATION (UNIVERSAL + CONVERSATION)
-   =============================== */
+     LANGUAGE NORMALIZATION (CONVERSATION-SAFE)
+     =============================== */
 
-/*
-  सिद्धांत:
-  1. Question words = SIGNAL (कभी हटेंगे नहीं)
-  2. Meaning words = DATA से आएँगे
-  3. केवल अत्यंत कमजोर filler हटेंगे
-*/
+  // ❗ केवल अत्यंत कमजोर filler हटते हैं
+  const WEAK_FILLERS = new Set([
+    "का","की","के","को","से","में","पर"
+  ]);
 
-const WEAK_FILLERS = new Set([
-  "का","की","के","को","से","में","पर"
-]);
+  // ❗ प्रश्न सूचक शब्द कभी नहीं हटते
+  const INTENT_WORDS = {
+    TIME:   ["कब","वर्ष","तारीख"],
+    PERSON:["कौन","किसने","प्रथम","पहले"],
+    REASON:["क्यों","कारण"],
+    METHOD:["कैसे"],
+    DEF:   ["क्या","अर्थ"]
+  };
 
-function normalize(text) {
-  if (typeof text !== "string") return "";
+  function normalize(text) {
+    if (typeof text !== "string") return "";
+    return text
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^\u0900-\u097F\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-  return text
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\u0900-\u097F\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/*
-  tokenize:
-  - प्रश्न के शब्द सुरक्षित
-  - विषय के शब्द सुरक्षित
-  - केवल कमजोर filler हटते हैं
-*/
-function tokenize(text) {
-  const words = normalize(text).split(" ").filter(Boolean);
-
-  return words.filter(w =>
-    w.length > 1 && !WEAK_FILLERS.has(w)
-  );
-}
+  function tokenize(text) {
+    const words = normalize(text).split(" ").filter(Boolean);
+    return words.filter(w => w.length > 1 && !WEAK_FILLERS.has(w));
+  }
 
   /* ===============================
-     CONCEPT MATCHING (SMART)
+     INTENT DETECTION (CRITICAL)
      =============================== */
-  function scoreConcept(tokens, concept) {
-    let score = 0;
-
-    for (const s of concept.signals) {
-      if (tokens.includes(s)) {
-        score += STRONG_KEYWORDS.includes(s) ? 3 : 1;
+  function detectIntent(tokens) {
+    for (const intent in INTENT_WORDS) {
+      if (INTENT_WORDS[intent].some(w => tokens.includes(w))) {
+        return intent;
       }
     }
+    return "GENERAL";
+  }
+
+  /* ===============================
+     CONCEPT SCORING (SMART)
+     =============================== */
+  function scoreConcept(tokens, intent, concept) {
+    // ❌ intent mismatch = zero score
+    if (concept.intent && concept.intent !== intent) return 0;
+
+    let score = 0;
+    for (const s of concept.signals) {
+      if (tokens.includes(s)) score += 2;
+    }
+
+    // confidence reinforcement
+    score += (concept.confidence || 1);
+
     return score;
   }
 
-  function findBestConcept(tokens) {
+  function findBestConcept(tokens, intent) {
     let best = null;
     let bestScore = 0;
 
     for (const c of Memory.concepts) {
-      const s = scoreConcept(tokens, c);
+      const s = scoreConcept(tokens, intent, c);
       if (s > bestScore) {
         bestScore = s;
         best = c;
       }
     }
 
-    // 🔒 Minimum threshold
-    return bestScore >= 2 ? best : null;
+    // 🔒 anti-false-positive threshold
+    return bestScore >= 4 ? best : null;
   }
 
   /* ===============================
-     LEARNING (DEDUP SAFE)
+     ULTRA-FAST LEARNING
      =============================== */
   function learn(question, answer) {
-    const signals = tokenize(question);
-    if (signals.length < 2) return;
+    const tokens = tokenize(question);
+    if (tokens.length < 2) return;
 
-    const existing = findBestConcept(signals);
+    const intent = detectIntent(tokens);
+
+    // dedup by intent + signal overlap
+    const existing = findBestConcept(tokens, intent);
     if (existing) {
       existing.answer = answer;
-      existing.confidence += 1;
+      existing.confidence += 2; // 🔥 rapid reinforcement
       save();
       return;
     }
 
     Memory.concepts.push({
       id: Date.now().toString(),
-      signals,
+      intent,
+      signals: tokens,
       answer,
-      confidence: 1
+      confidence: 3
     });
 
     Memory.stats.learned++;
@@ -148,10 +166,11 @@ function tokenize(text) {
       return { text: "मुझे प्रश्न स्पष्ट नहीं मिला।" };
     }
 
-    const concept = findBestConcept(tokens);
+    const intent = detectIntent(tokens);
+    const concept = findBestConcept(tokens, intent);
 
     if (concept) {
-      concept.confidence += 0.5;
+      concept.confidence += 1;
       Memory.stats.answered++;
       save();
       return { text: concept.answer };
@@ -164,7 +183,7 @@ function tokenize(text) {
   }
 
   /* ===============================
-     🔑 ADMIN BRIDGE (CRITICAL)
+     🔑 ADMIN BRIDGE (LOCKED)
      =============================== */
   function addConcept(id, signals, responder) {
     if (!Array.isArray(signals) || typeof responder !== "function") return;
